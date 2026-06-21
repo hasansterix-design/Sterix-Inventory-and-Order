@@ -148,7 +148,11 @@
   @media(max-width:900px){
     .stats{grid-template-columns:repeat(2,1fr);}
     .toolbar select{display:none;}
+    .table-card{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    table{min-width:640px;}
+    .scroll-hint{display:block;}
   }
+  .scroll-hint{display:none;font-size:12px;color:var(--text-tertiary);text-align:right;padding:6px 14px 0;}
 </style>
 </head>
 <body>
@@ -252,6 +256,7 @@
         <tbody id="inv-table-body"></tbody>
       </table>
       <div class="empty-state hidden" id="inv-empty">No SKUs match your filters.</div>
+      <p class="scroll-hint">swipe to see more →</p>
     </div>
   </div>
 
@@ -285,6 +290,7 @@
         <tbody id="ord-table-body"></tbody>
       </table>
       <div class="empty-state hidden" id="ord-empty">No orders match your filters.</div>
+      <p class="scroll-hint">swipe to see more →</p>
     </div>
   </div>
 
