@@ -138,7 +138,9 @@
 
 <div id="login-screen" class="login-wrap hidden">
   <div class="login-card">
-    <img src="sterix-icon.png" alt="Sterix Global" style="height:64px;margin-bottom:14px;" />
+    <img src="sterix-icon.png" alt="Sterix Global" style="height:64px;margin-bottom:10px;" />
+    <p style="margin:0 0 4px;font-size:17px;font-weight:700;color:var(--navy);">Sterix Global</p>
+    <p style="margin:0 0 18px;font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--teal);text-transform:uppercase;">Inventory &amp; Order Management</p>
     <div style="display:flex;gap:4px;margin-bottom:18px;border-bottom:1px solid var(--border);">
       <button class="tab active" id="tab-sign-in" style="flex:1;">Sign in</button>
       <button class="tab" id="tab-sign-up" style="flex:1;">Create profile</button>
@@ -172,6 +174,7 @@
     <div class="header-left">
       <img src="sterix-icon.png" alt="Sterix Global" style="height:32px;" />
       <div class="title-block">
+        <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:0.8px;color:var(--teal);text-transform:uppercase;">Sterix Global · Inventory &amp; Orders</p>
         <p class="title" id="page-title">Inventory Tracker</p>
         <p class="subtitle" id="page-subtitle">Stock across 5 categories · 12 SKUs</p>
       </div>
@@ -214,7 +217,8 @@
         <option value="critical">Reorder now</option>
       </select>
       <button class="btn" id="inv-export-btn">Export</button>
-      <button class="btn btn-primary" id="receive-stock-btn">+ Receive stock</button>
+      <button class="btn btn-primary" id="add-stock-btn">Add stock</button>
+      <button class="btn" id="remove-stock-btn">Remove stock</button>
       <button class="btn" id="add-sku-btn">+ Add SKU</button>
     </div>
 
@@ -225,7 +229,7 @@
       <table>
         <thead>
           <tr>
-            <th>SKU</th><th>Batch no.</th><th>Expiry</th><th>Stock</th><th>Reorder at</th><th>Status</th><th></th>
+            <th>SKU</th><th>Batch no.</th><th>Expiry</th><th>Stock</th><th>Reorder at</th><th>Status</th>
           </tr>
         </thead>
         <tbody id="inv-table-body"></tbody>
@@ -574,12 +578,6 @@ function renderInventory(){
         </td>
         <td>${Number(s.reorder_at).toLocaleString('en-IN')} ${s.unit}</td>
         <td><span class="pill ${pillClass}">${pillLabel}</span></td>
-        <td>
-          <div style="display:flex;gap:4px;">
-            <button class="icon-btn" onclick="openReceiveModal('${s.sku_id}')" aria-label="Receive stock" title="Receive stock">+</button>
-            <button class="icon-btn" onclick="openAdjustModal('${s.sku_id}')" aria-label="Adjust stock" title="Adjust stock">±</button>
-          </div>
-        </td>
       </tr>`;
   }).join('');
 }
@@ -800,12 +798,12 @@ async function submitNewSku(){
   renderInventory();
 }
 
-document.getElementById('receive-stock-btn').addEventListener('click', () => {
+document.getElementById('add-stock-btn').addEventListener('click', () => {
   if(skus.length === 0){ alert('Add a SKU first.'); return; }
   document.getElementById('modal-root').innerHTML = `
     <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
       <div class="modal">
-        <h3>Receive stock</h3>
+        <h3>Add stock</h3>
         <div class="form-row">
           <label>SKU</label>
           <select id="rcv-sku-picker">${skus.map(s => `<option value="${s.sku_id}">${s.name} (${s.category})</option>`).join('')}</select>
@@ -813,6 +811,24 @@ document.getElementById('receive-stock-btn').addEventListener('click', () => {
         <div class="modal-actions">
           <button class="btn" onclick="closeModal()">Cancel</button>
           <button class="btn btn-primary" onclick="openReceiveModal(document.getElementById('rcv-sku-picker').value)">Next</button>
+        </div>
+      </div>
+    </div>`;
+});
+
+document.getElementById('remove-stock-btn').addEventListener('click', () => {
+  if(skus.length === 0){ alert('Add a SKU first.'); return; }
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal">
+        <h3>Remove stock</h3>
+        <div class="form-row">
+          <label>SKU</label>
+          <select id="adj-sku-picker">${skus.map(s => `<option value="${s.sku_id}">${s.name} (${s.category})</option>`).join('')}</select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="openAdjustModal(document.getElementById('adj-sku-picker').value)">Next</button>
         </div>
       </div>
     </div>`;
