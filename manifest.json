@@ -5,5 +5,7 @@
   "display": "standalone",
   "background_color": "#f4f6f9",
   "theme_color": "#0B3C5D",
-  "icons": []
+  "icons": [
+    { "src": "sterix-icon.png", "sizes": "512x512", "type": "image/png" }
+  ]
 }
