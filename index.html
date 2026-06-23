@@ -66,6 +66,7 @@
   .alert-warning{background:var(--warning-bg);color:#8a6116;}
 
   .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px;}
+  .stats.stats-wide{grid-template-columns:repeat(8,1fr);}
   .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;}
   .stat-label{font-size:12px;color:var(--text-secondary);margin:0 0 6px;}
   .stat-value{font-size:24px;font-weight:700;margin:0;color:var(--navy);}
@@ -80,6 +81,7 @@
   tbody tr:hover{background:#fafbfd;}
   .sku-name{font-weight:600;color:var(--text);}
   .sku-sub{font-size:12px;color:var(--text-tertiary);}
+  .pack-type-pill{display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:600;background:var(--sky-light);color:var(--navy);}
   .sku-icon{width:30px;height:30px;border-radius:6px;background:var(--sky-light);display:flex;align-items:center;justify-content:center;margin-right:10px;flex-shrink:0;}
   .sku-cell{display:flex;align-items:center;}
 
@@ -128,6 +130,7 @@
 
   @media(max-width:900px){
     .stats{grid-template-columns:repeat(2,1fr);}
+    .stats.stats-wide{grid-template-columns:repeat(2,1fr);}
     .toolbar select{display:none;}
     .table-card{overflow-x:auto;-webkit-overflow-scrolling:touch;}
     table{min-width:640px;}
@@ -178,7 +181,7 @@
       <div class="title-block">
         <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:0.8px;color:var(--teal);text-transform:uppercase;">Sterix Global · Inventory &amp; Orders</p>
         <p class="title" id="page-title">Inventory Tracker</p>
-        <p class="subtitle" id="page-subtitle">Stock across 5 categories · 12 SKUs</p>
+        <p class="subtitle" id="page-subtitle">Stock across 5 categories · 12 products</p>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;">
@@ -218,7 +221,7 @@
 
     <div id="finished-subtab">
       <div class="toolbar">
-        <input type="text" id="inv-search" placeholder="Search SKU, batch, or category..." />
+        <input type="text" id="inv-search" placeholder="Search product, batch, or category..." />
         <select id="inv-category-filter">
           <option value="">All categories</option>
         </select>
@@ -231,7 +234,7 @@
         <button class="btn" id="inv-export-btn">Export to Excel</button>
         <button class="btn btn-primary" id="add-stock-btn">Add stock</button>
         <button class="btn" id="remove-stock-btn">Remove stock</button>
-        <button class="btn" id="add-sku-btn">Add SKU</button>
+        <button class="btn" id="add-sku-btn">Add product</button>
       </div>
 
       <div id="inv-alert-wrap"></div>
@@ -241,12 +244,12 @@
         <table>
           <thead>
             <tr>
-              <th>SKU</th><th>Batch no.</th><th>Expiry</th><th>Stock</th><th>Reorder at</th><th>Status</th>
+              <th>Product</th><th>Pack Type</th><th>Batch No.</th><th>Expiry</th><th>Stock</th><th>Reorder At</th><th>Status</th>
             </tr>
           </thead>
           <tbody id="inv-table-body"></tbody>
         </table>
-        <div class="empty-state hidden" id="inv-empty">No SKUs match your filters.</div>
+        <div class="empty-state hidden" id="inv-empty">No products match your filters.</div>
         <p class="scroll-hint">swipe to see more →</p>
       </div>
     </div>
@@ -266,7 +269,7 @@
         <table>
           <thead>
             <tr>
-              <th>Component</th><th>Stock</th><th>Reorder at</th><th>Status</th>
+              <th>Component</th><th>Stock</th><th>Reorder At</th><th>Status</th>
             </tr>
           </thead>
           <tbody id="comp-table-body"></tbody>
@@ -278,7 +281,7 @@
 
   <div id="orders-tab" class="hidden">
     <div class="toolbar">
-      <input type="text" id="ord-search" placeholder="Search order ID, company, or city..." />
+      <input type="text" id="ord-search" placeholder="Search order ID, company, city, or product..." />
       <select id="ord-stage-filter">
         <option value="">All stages</option>
         <option value="received">Received</option>
@@ -289,13 +292,17 @@
         <option value="qc">QC</option>
         <option value="dispatched">Dispatched</option>
       </select>
+      <input type="date" id="ord-date-from" title="From date" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-md);font-size:14px;background:var(--card);" />
+      <input type="date" id="ord-date-to" title="To date" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-md);font-size:14px;background:var(--card);" />
       <button class="btn" id="ord-export-btn">Export to Excel</button>
       <button class="btn btn-primary" id="new-order-btn">Add order</button>
       <button class="btn" id="remove-order-btn">Remove order</button>
+      <button class="btn" id="ord-settings-btn" title="Alert settings">⚙</button>
     </div>
 
     <div id="ord-alert-wrap"></div>
-    <div class="stats" id="ord-stats"></div>
+    <div class="stats stats-wide" id="ord-stats"></div>
+    <div class="stats" id="ord-stats-secondary" style="grid-template-columns:repeat(2,1fr);"></div>
 
     <div class="table-card">
       <table>
@@ -325,9 +332,55 @@ let currentUser = null;
 let skus = [];
 let orders = [];
 let orderItems = [];
+let nearestBatchBySku = {}; // sku_id -> nearest-expiring batch with remaining stock
 
 const STAGES = ['received','confirmed','in_production','packed','sterilization','qc','dispatched'];
+
+// ---------------- Stuck-order threshold (configurable, saved per-browser) ----------------
+const STUCK_THRESHOLD_KEY = 'sterix_stuck_threshold_days';
+function getStuckThresholdDays(){
+  const saved = Number(localStorage.getItem(STUCK_THRESHOLD_KEY));
+  return (saved && saved > 0) ? saved : 3; // default to 3 days if never set
+}
+function setStuckThresholdDays(days){
+  localStorage.setItem(STUCK_THRESHOLD_KEY, String(days));
+}
 const STAGE_LABELS = {received:'Received', confirmed:'Confirmed', in_production:'In Production', packed:'Packed', sterilization:'Sterilization', qc:'QC', dispatched:'Dispatched'};
+
+// ---------------- Display text normalization ----------------
+// Source data (product/category/pack-type names) lives in Supabase and may have
+// inconsistent capitalization from manual entry (e.g. "2 ml", "2 Ml", "2 ML").
+// This function normalizes KNOWN patterns for display only — it never writes
+// back to the database, so the underlying records are untouched.
+function formatDisplayText(text){
+  if(!text) return text;
+  let out = String(text);
+
+  // Volume units: normalize any case-variant of ml to "mL" (milliliter, SI-correct casing)
+  out = out.replace(/(\d+(\.\d+)?)\s*[mM][lL]\b/g, (m, num) => `${num} mL`);
+
+  // Gauge: normalize any case-variant of g (as a standalone unit after a number) to "G"
+  out = out.replace(/(\d+(\.\d+)?)\s*[gG]\b(?!\w)/g, (m, num) => `${num} G`);
+
+  // Title-case the rest of the string, but keep small connector words lowercase
+  // unless they're the first word.
+  const lowerWords = new Set(['with','w/','and','or','of','in','for']);
+  out = out.split(' ').map((word, i) => {
+    // Skip words we already normalized (contain a unit we just fixed) or pure numbers/codes
+    if(/^\d/.test(word) || word.toLowerCase() === 'ml' || word === 'mL' || word === 'G') return word;
+    const lower = word.toLowerCase();
+    if(i > 0 && lowerWords.has(lower)) return lower;
+    // Preserve existing all-caps acronyms (like "IV", "QC") as-is
+    if(word.length <= 3 && word === word.toUpperCase() && /[A-Z]/.test(word)) return word;
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).join(' ');
+
+  // Re-apply unit fix in case title-casing affected it
+  out = out.replace(/(\d+(\.\d+)?)\s*[mM][lL]\b/g, (m, num) => `${num} mL`);
+  out = out.replace(/(\d+(\.\d+)?)\s*[gG]\b(?!\w)/g, (m, num) => `${num} G`);
+
+  return out;
+}
 
 function checkSession(){
   const saved = localStorage.getItem('sterix_lead_user');
@@ -517,7 +570,7 @@ document.querySelectorAll('.tab[data-tab]').forEach(tab => {
 function updateInventorySubtitle(){
   const activeSub = document.querySelector('.sub-tab.active')?.dataset.subtab || 'finished';
   document.getElementById('page-subtitle').textContent = activeSub === 'finished'
-    ? `Stock across ${new Set(skus.map(s=>s.category)).size} categories · ${skus.length} SKUs`
+    ? `Stock across ${new Set(skus.map(s=>s.category)).size} categories · ${skus.length} products`
     : '';
 }
 
@@ -533,10 +586,26 @@ document.querySelectorAll('.sub-tab[data-subtab]').forEach(subtab => {
 });
 
 async function loadAll(){
-  await Promise.all([loadSkus(), loadOrders(), loadComponents()]);
+  await Promise.all([loadSkus(), loadOrders(), loadComponents(), loadNearestBatches()]);
   renderInventory();
   renderOrders();
   renderComponents();
+}
+
+async function loadNearestBatches(){
+  // Pull every batch with remaining stock, then keep only the nearest-expiring
+  // one per SKU (FIFO order) so the Inventory table can show a real batch number
+  // instead of a placeholder dash.
+  const { data, error } = await sb.from('batches')
+    .select('sku_id, batch_no, expiry_date, qty_remaining')
+    .gt('qty_remaining', 0)
+    .order('expiry_date', { ascending: true, nullsFirst: false });
+  if(error){ console.error(error); nearestBatchBySku = {}; return; }
+
+  nearestBatchBySku = {};
+  (data || []).forEach(b => {
+    if(!nearestBatchBySku[b.sku_id]) nearestBatchBySku[b.sku_id] = b;
+  });
 }
 
 let components = [];
@@ -564,7 +633,7 @@ async function loadSkus(){
 
   const catFilter = document.getElementById('inv-category-filter');
   const cats = [...new Set(skus.map(s => s.category))];
-  catFilter.innerHTML = '<option value="">All categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+  catFilter.innerHTML = '<option value="">All categories</option>' + cats.map(c => `<option value="${c}">${formatDisplayText(c)}</option>`).join('');
 }
 
 async function loadOrders(){
@@ -589,7 +658,7 @@ function renderInventory(){
   const statusF = document.getElementById('inv-status-filter').value;
 
   let filtered = skus.filter(s => {
-    const matchesSearch = !search || s.name.toLowerCase().includes(search) || (s.category||'').toLowerCase().includes(search);
+    const matchesSearch = !search || s.name.toLowerCase().includes(search) || (s.category||'').toLowerCase().includes(search) || (s.subtype||'').toLowerCase().includes(search);
     const matchesCat = !catF || s.category === catF;
     const matchesStatus = !statusF || stockStatus(s) === statusF;
     return matchesSearch && matchesCat && matchesStatus;
@@ -602,17 +671,17 @@ function renderInventory(){
   const expiringSoon = skus.filter(s => s.nearest_expiry && new Date(s.nearest_expiry) <= sixMonthsOut);
 
   document.getElementById('inv-stats').innerHTML = `
-    <div class="stat-card"><p class="stat-label">Total SKUs</p><p class="stat-value">${skus.length}</p></div>
+    <div class="stat-card"><p class="stat-label">Total Products</p><p class="stat-value">${skus.length}</p></div>
     <div class="stat-card"><p class="stat-label">Critical</p><p class="stat-value danger">${critical.length}</p></div>
-    <div class="stat-card"><p class="stat-label">Low stock</p><p class="stat-value warning">${low.length}</p></div>
-    <div class="stat-card"><p class="stat-label">Total units</p><p class="stat-value">${totalUnits.toLocaleString('en-IN')}</p></div>
+    <div class="stat-card"><p class="stat-label">Low Stock</p><p class="stat-value warning">${low.length}</p></div>
+    <div class="stat-card"><p class="stat-label">Total Units</p><p class="stat-value">${totalUnits.toLocaleString('en-IN')}</p></div>
     <div class="stat-card"><p class="stat-label">Expiring &lt;6mo</p><p class="stat-value warning">${expiringSoon.length}</p></div>
   `;
 
   if(critical.length > 0){
     document.getElementById('inv-alert-wrap').innerHTML = `
       <div class="alert alert-danger">
-        ${critical.length} SKU${critical.length>1?'s':''} need reordering now: ${critical.map(s=>s.name).join(', ')}
+        ${critical.length} product${critical.length>1?'s':''} need reordering now: ${critical.map(s=>formatDisplayText(s.name)).join(', ')}
       </div>`;
   } else {
     document.getElementById('inv-alert-wrap').innerHTML = '';
@@ -628,6 +697,8 @@ function renderInventory(){
     const fillClass = status === 'ok' ? 'fill-ok' : status === 'low' ? 'fill-low' : 'fill-critical';
     const pct = Math.min(100, Math.round((s.current_stock / Math.max(s.reorder_at*2,1)) * 100));
     const expiry = s.nearest_expiry ? new Date(s.nearest_expiry).toLocaleDateString('en-IN', {month:'short', year:'numeric'}) : '—';
+    const nearestBatch = nearestBatchBySku[s.sku_id];
+    const batchLabel = nearestBatch ? nearestBatch.batch_no : '—';
 
     return `
       <tr>
@@ -635,12 +706,13 @@ function renderInventory(){
           <div class="sku-cell">
             <div class="sku-icon"></div>
             <div>
-              <div class="sku-name">${s.name}</div>
-              <div class="sku-sub">${s.category} · ${s.subtype || ''}</div>
+              <div class="sku-name">${formatDisplayText(s.name)}</div>
+              <div class="sku-sub">${formatDisplayText(s.category)}</div>
             </div>
           </div>
         </td>
-        <td>—</td>
+        <td>${s.subtype ? `<span class="pack-type-pill">${formatDisplayText(s.subtype)}</span>` : '—'}</td>
+        <td>${batchLabel}</td>
         <td>${expiry}</td>
         <td>
           <div class="stock-bar-wrap">
@@ -648,7 +720,7 @@ function renderInventory(){
             <div class="stock-bar-bg"><div class="stock-bar-fill ${fillClass}" style="width:${pct}%"></div></div>
           </div>
         </td>
-        <td><span class="reorder-edit" onclick="editReorderAt('sku', '${s.sku_id}', ${s.reorder_at}, '${s.unit}')" style="cursor:pointer;border-bottom:1px dashed var(--text-tertiary);" title="Click to edit">${Number(s.reorder_at).toLocaleString('en-IN')} ${s.unit}</span></td>
+        <td><span class="reorder-edit" onclick="openEditReorderModal('sku', '${s.sku_id}', ${s.reorder_at}, '${s.unit}', '${formatDisplayText(s.name).replace(/'/g, "\\'")}')" style="cursor:pointer;border-bottom:1px dashed var(--text-tertiary);" title="Click to edit">${Number(s.reorder_at).toLocaleString('en-IN')} ${s.unit}</span></td>
         <td><span class="pill ${pillClass}">${pillLabel}</span></td>
       </tr>`;
   }).join('');
@@ -674,16 +746,16 @@ function renderComponents(){
   const totalUnits = components.reduce((sum,c) => sum + Number(c.current_stock), 0);
 
   document.getElementById('comp-stats').innerHTML = `
-    <div class="stat-card"><p class="stat-label">Total components</p><p class="stat-value">${components.length}</p></div>
+    <div class="stat-card"><p class="stat-label">Total Components</p><p class="stat-value">${components.length}</p></div>
     <div class="stat-card"><p class="stat-label">Critical</p><p class="stat-value danger">${critical.length}</p></div>
-    <div class="stat-card"><p class="stat-label">Low stock</p><p class="stat-value warning">${low.length}</p></div>
-    <div class="stat-card"><p class="stat-label">Total units</p><p class="stat-value">${totalUnits.toLocaleString('en-IN')}</p></div>
+    <div class="stat-card"><p class="stat-label">Low Stock</p><p class="stat-value warning">${low.length}</p></div>
+    <div class="stat-card"><p class="stat-label">Total Units</p><p class="stat-value">${totalUnits.toLocaleString('en-IN')}</p></div>
   `;
 
   if(critical.length > 0){
     document.getElementById('comp-alert-wrap').innerHTML = `
       <div class="alert alert-danger">
-        ${critical.length} component${critical.length>1?'s':''} need reordering now: ${critical.map(c=>c.name).join(', ')} — this may be why orders are stuck in production.
+        ${critical.length} component${critical.length>1?'s':''} need reordering now: ${critical.map(c=>formatDisplayText(c.name)).join(', ')} — this may be why orders are stuck in production.
       </div>`;
   } else {
     document.getElementById('comp-alert-wrap').innerHTML = '';
@@ -701,14 +773,14 @@ function renderComponents(){
 
     return `
       <tr>
-        <td><div class="sku-name">${c.name}</div></td>
+        <td><div class="sku-name">${formatDisplayText(c.name)}</div></td>
         <td>
           <div class="stock-bar-wrap">
             <span class="stock-qty">${Number(c.current_stock).toLocaleString('en-IN')} ${c.unit}</span>
             <div class="stock-bar-bg"><div class="stock-bar-fill ${fillClass}" style="width:${pct}%"></div></div>
           </div>
         </td>
-        <td><span class="reorder-edit" onclick="editReorderAt('component', '${c.component_id}', ${c.reorder_at}, '${c.unit}')" style="cursor:pointer;border-bottom:1px dashed var(--text-tertiary);" title="Click to edit">${Number(c.reorder_at).toLocaleString('en-IN')} ${c.unit}</span></td>
+        <td><span class="reorder-edit" onclick="openEditReorderModal('component', '${c.component_id}', ${c.reorder_at}, '${c.unit}', '${formatDisplayText(c.name).replace(/'/g, "\\'")}')" style="cursor:pointer;border-bottom:1px dashed var(--text-tertiary);" title="Click to edit">${Number(c.reorder_at).toLocaleString('en-IN')} ${c.unit}</span></td>
         <td><span class="pill ${pillClass}">${pillLabel}</span></td>
       </tr>`;
   }).join('');
@@ -719,37 +791,51 @@ document.getElementById('comp-search').addEventListener('input', renderComponent
 function renderOrders(){
   const search = document.getElementById('ord-search').value.toLowerCase();
   const stageF = document.getElementById('ord-stage-filter').value;
+  const dateFrom = document.getElementById('ord-date-from').value;
+  const dateTo = document.getElementById('ord-date-to').value;
 
   let filtered = orders.filter(o => {
-    const matchesSearch = !search || o.order_no.toLowerCase().includes(search) || o.customer_name.toLowerCase().includes(search) || (o.city||'').toLowerCase().includes(search);
+    const items = orderItems.filter(i => i.order_id === o.id);
+    const matchesProduct = items.some(i => (i.skus?.name || '').toLowerCase().includes(search));
+    const matchesSearch = !search || o.order_no.toLowerCase().includes(search) || o.customer_name.toLowerCase().includes(search) || (o.city||'').toLowerCase().includes(search) || matchesProduct;
     const matchesStage = !stageF || o.stage === stageF;
-    return matchesSearch && matchesStage;
+    const orderDate = o.created_at ? o.created_at.slice(0, 10) : null;
+    const matchesFrom = !dateFrom || (orderDate && orderDate >= dateFrom);
+    const matchesTo = !dateTo || (orderDate && orderDate <= dateTo);
+    return matchesSearch && matchesStage && matchesFrom && matchesTo;
   });
 
-  const openOrders = orders.filter(o => o.stage !== 'dispatched');
-  const inProduction = orders.filter(o => o.stage === 'in_production');
-  const inQC = orders.filter(o => o.stage === 'qc');
-  const today = new Date().toDateString();
-  const dispatchedToday = orders.filter(o => o.stage === 'dispatched' && new Date(o.stage_entered_at).toDateString() === today);
+  // Build a count for every stage in the pipeline, so nothing is invisible on the dashboard.
+  const stageCounts = {};
+  STAGES.forEach(st => { stageCounts[st] = orders.filter(o => o.stage === st).length; });
   const totalValue = orders.reduce((sum,o) => sum + Number(o.order_value), 0);
 
   document.getElementById('ord-stats').innerHTML = `
-    <div class="stat-card"><p class="stat-label">Open orders</p><p class="stat-value">${openOrders.length}</p></div>
-    <div class="stat-card"><p class="stat-label">In production</p><p class="stat-value warning">${inProduction.length}</p></div>
-    <div class="stat-card"><p class="stat-label">In QC</p><p class="stat-value warning">${inQC.length}</p></div>
-    <div class="stat-card"><p class="stat-label">Dispatched today</p><p class="stat-value">${dispatchedToday.length}</p></div>
-    <div class="stat-card"><p class="stat-label">Order value</p><p class="stat-value">₹${totalValue.toLocaleString('en-IN')}</p></div>
+    <div class="stat-card"><p class="stat-label">Total Orders</p><p class="stat-value">${orders.length}</p></div>
+    <div class="stat-card"><p class="stat-label">Received</p><p class="stat-value">${stageCounts.received}</p></div>
+    <div class="stat-card"><p class="stat-label">Confirmed</p><p class="stat-value">${stageCounts.confirmed}</p></div>
+    <div class="stat-card"><p class="stat-label">In Production</p><p class="stat-value warning">${stageCounts.in_production}</p></div>
+    <div class="stat-card"><p class="stat-label">Packed</p><p class="stat-value">${stageCounts.packed}</p></div>
+    <div class="stat-card"><p class="stat-label">Sterilization</p><p class="stat-value warning">${stageCounts.sterilization}</p></div>
+    <div class="stat-card"><p class="stat-label">QC</p><p class="stat-value warning">${stageCounts.qc}</p></div>
+    <div class="stat-card"><p class="stat-label">Dispatched</p><p class="stat-value">${stageCounts.dispatched}</p></div>
   `;
 
+  document.getElementById('ord-stats-secondary').innerHTML = `
+    <div class="stat-card"><p class="stat-label">Open Orders (Not Yet Dispatched)</p><p class="stat-value">${orders.length - stageCounts.dispatched}</p></div>
+    <div class="stat-card"><p class="stat-label">Total Order Value</p><p class="stat-value">₹${totalValue.toLocaleString('en-IN')}</p></div>
+  `;
+
+  const stuckThreshold = getStuckThresholdDays();
   const stuck = orders.filter(o => {
     if(o.stage === 'dispatched') return false;
     const days = (Date.now() - new Date(o.stage_entered_at)) / 86400000;
-    return days >= 3;
+    return days >= stuckThreshold;
   });
   if(stuck.length > 0){
     document.getElementById('ord-alert-wrap').innerHTML = `
       <div class="alert alert-warning">
-        ${stuck.length} order${stuck.length>1?'s':''} waiting 3+ days: ${stuck.map(o=>o.order_no).join(', ')}
+        ${stuck.length} order${stuck.length>1?'s':''} waiting ${stuckThreshold}+ days: ${stuck.map(o=>o.order_no).join(', ')}
       </div>`;
   } else {
     document.getElementById('ord-alert-wrap').innerHTML = '';
@@ -760,7 +846,14 @@ function renderOrders(){
 
   tbody.innerHTML = filtered.map(o => {
     const items = orderItems.filter(i => i.order_id === o.id);
-    const itemsLabel = items.map(i => `${i.skus?.name || '—'} x ${Number(i.qty).toLocaleString('en-IN')}`).join(', ') || '—';
+    const itemStrings = items.map(i => `${formatDisplayText(i.skus?.name) || '—'} x ${Number(i.qty).toLocaleString('en-IN')}`);
+    const fullItemsText = itemStrings.join(', ') || '—';
+    const visibleCount = 2;
+    const itemsLabel = itemStrings.length === 0
+      ? '—'
+      : itemStrings.length <= visibleCount
+        ? fullItemsText
+        : `${itemStrings.slice(0, visibleCount).join(', ')} <span style="color:var(--text-tertiary);font-weight:600;" title="${fullItemsText.replace(/"/g, '&quot;')}">+${itemStrings.length - visibleCount} more</span>`;
     const stageIdx = STAGES.indexOf(o.stage);
 
     const dots = STAGES.map((st, idx) => {
@@ -777,7 +870,7 @@ function renderOrders(){
       <tr>
         <td><strong>${o.order_no}</strong><div class="sku-sub">${new Date(o.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'2-digit'})}</div></td>
         <td>${o.customer_name}<div class="sku-sub">${o.city||''}</div></td>
-        <td>${itemsLabel}</td>
+        <td title="${fullItemsText.replace(/"/g, '&quot;')}">${itemsLabel}</td>
         <td>₹${Number(o.order_value).toLocaleString('en-IN')}</td>
         <td>
           <div class="stage-track">${dots}</div>
@@ -793,17 +886,44 @@ function renderOrders(){
   }).join('');
 }
 
-['ord-search','ord-stage-filter'].forEach(id => {
+['ord-search','ord-stage-filter','ord-date-from','ord-date-to'].forEach(id => {
   document.getElementById(id).addEventListener('input', renderOrders);
   document.getElementById(id).addEventListener('change', renderOrders);
 });
+
+document.getElementById('ord-settings-btn').addEventListener('click', () => {
+  const current = getStuckThresholdDays();
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal" style="max-width:360px;">
+        <h3>Alert settings</h3>
+        <p style="font-size:13px;color:var(--text-secondary);margin:-8px 0 14px;">Orders sitting in any non-dispatched stage longer than this will show a "stuck" warning.</p>
+        <div class="form-row">
+          <label>Flag orders stuck for more than (days)</label>
+          <input type="number" id="stuck-threshold-input" min="1" value="${current}" />
+        </div>
+        <div class="modal-actions">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveStuckThreshold()">Save</button>
+        </div>
+      </div>
+    </div>`;
+});
+
+function saveStuckThreshold(){
+  const val = Number(document.getElementById('stuck-threshold-input').value);
+  if(isNaN(val) || val < 1){ alert('Enter a valid number of days (1 or more).'); return; }
+  setStuckThresholdDays(val);
+  closeModal();
+  renderOrders();
+}
 
 function openReceiveModal(skuId){
   const sku = skus.find(s => s.sku_id === skuId);
   document.getElementById('modal-root').innerHTML = `
     <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
       <div class="modal">
-        <h3>Receive stock — ${sku ? sku.name : ''}</h3>
+        <h3>Receive stock — ${sku ? formatDisplayText(sku.name) : ''}</h3>
         <div class="form-row"><label>Batch number</label><input type="text" id="rcv-batch" placeholder="e.g. SG-RB02-0726" /></div>
         <div class="form-row"><label>Expiry date</label><input type="date" id="rcv-expiry" /></div>
         <div class="form-row"><label>Quantity received</label><input type="number" id="rcv-qty" min="1" /></div>
@@ -834,6 +954,7 @@ async function submitReceiveStock(skuId){
 
   closeModal();
   await loadSkus();
+  await loadNearestBatches();
   renderInventory();
 }
 
@@ -850,14 +971,14 @@ async function openAdjustModal(skuId){
   document.getElementById('modal-root').innerHTML = `
     <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
       <div class="modal">
-        <h3>Adjust stock — ${sku ? sku.name : ''}</h3>
+        <h3>Adjust stock — ${sku ? formatDisplayText(sku.name) : ''}</h3>
         <p style="font-size:13px;color:var(--text-secondary);margin:-8px 0 14px;">Use this to record damage, expiry write-offs, or correct a mistaken entry.</p>
         ${batchOptions ? `
           <div class="form-row">
             <label>Batch to adjust</label>
             <select id="adj-batch-picker">${batchOptions}</select>
           </div>
-        ` : `<p style="font-size:13px;color:var(--text-tertiary);">No batches with remaining stock found for this SKU.</p>`}
+        ` : `<p style="font-size:13px;color:var(--text-tertiary);">No batches with remaining stock found for this product.</p>`}
         <div class="form-row"><label>Quantity to remove</label><input type="number" id="adj-qty" min="1" /></div>
         <div class="form-row">
           <label>Reason</label>
@@ -895,6 +1016,7 @@ async function submitAdjustStock(skuId){
 
   closeModal();
   await loadSkus();
+  await loadNearestBatches();
   renderInventory();
 }
 
@@ -902,16 +1024,16 @@ document.getElementById('add-sku-btn').addEventListener('click', () => {
   document.getElementById('modal-root').innerHTML = `
     <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
       <div class="modal">
-        <h3>Add new SKU</h3>
+        <h3>Add new product</h3>
         <div class="form-row"><label>Name</label><input type="text" id="new-sku-name" placeholder="e.g. 50 mL With Needle" /></div>
         <div class="form-row"><label>Category</label><input type="text" id="new-sku-category" placeholder="e.g. Syringes w/ Needle" /></div>
-        <div class="form-row"><label>Subtype</label><input type="text" id="new-sku-subtype" placeholder="e.g. Ribbon Pack" /></div>
+        <div class="form-row"><label>Pack Type</label><input type="text" id="new-sku-subtype" placeholder="e.g. Ribbon Pack" /></div>
         <div class="form-row"><label>Unit</label><input type="text" id="new-sku-unit" value="pcs" /></div>
         <div class="form-row"><label>Reorder at</label><input type="number" id="new-sku-reorder" placeholder="e.g. 2000" /></div>
         <div class="form-row"><label>Basic rate (₹ per piece, before GST/discount)</label><input type="number" id="new-sku-rate" placeholder="e.g. 1.38" step="0.01" /></div>
         <div class="modal-actions">
           <button class="btn" onclick="closeModal()">Cancel</button>
-          <button class="btn btn-primary" onclick="submitNewSku()">Add SKU</button>
+          <button class="btn btn-primary" onclick="submitNewSku()">Add product</button>
         </div>
       </div>
     </div>`;
@@ -931,18 +1053,19 @@ async function submitNewSku(){
 
   closeModal();
   await loadSkus();
+  await loadNearestBatches();
   renderInventory();
 }
 
 document.getElementById('add-stock-btn').addEventListener('click', () => {
-  if(skus.length === 0){ alert('Add a SKU first.'); return; }
+  if(skus.length === 0){ alert('Add a product first.'); return; }
   document.getElementById('modal-root').innerHTML = `
     <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
       <div class="modal">
         <h3>Add stock</h3>
         <div class="form-row">
-          <label>SKU</label>
-          <select id="rcv-sku-picker">${skus.map(s => `<option value="${s.sku_id}">${s.name} (${s.category})</option>`).join('')}</select>
+          <label>Product</label>
+          <select id="rcv-sku-picker">${skus.map(s => `<option value="${s.sku_id}">${formatDisplayText(s.name)} (${formatDisplayText(s.category)})</option>`).join('')}</select>
         </div>
         <div class="modal-actions">
           <button class="btn" onclick="closeModal()">Cancel</button>
@@ -953,14 +1076,14 @@ document.getElementById('add-stock-btn').addEventListener('click', () => {
 });
 
 document.getElementById('remove-stock-btn').addEventListener('click', () => {
-  if(skus.length === 0){ alert('Add a SKU first.'); return; }
+  if(skus.length === 0){ alert('Add a product first.'); return; }
   document.getElementById('modal-root').innerHTML = `
     <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
       <div class="modal">
         <h3>Remove stock</h3>
         <div class="form-row">
-          <label>SKU</label>
-          <select id="adj-sku-picker">${skus.map(s => `<option value="${s.sku_id}">${s.name} (${s.category})</option>`).join('')}</select>
+          <label>Product</label>
+          <select id="adj-sku-picker">${skus.map(s => `<option value="${s.sku_id}">${formatDisplayText(s.name)} (${formatDisplayText(s.category)})</option>`).join('')}</select>
         </div>
         <div class="modal-actions">
           <button class="btn" onclick="closeModal()">Cancel</button>
@@ -979,7 +1102,7 @@ document.getElementById('add-component-stock-btn').addEventListener('click', () 
         <h3>Add component stock</h3>
         <div class="form-row">
           <label>Component</label>
-          <select id="comp-add-picker">${components.map(c => `<option value="${c.component_id}">${c.name}</option>`).join('')}</select>
+          <select id="comp-add-picker">${components.map(c => `<option value="${c.component_id}">${formatDisplayText(c.name)}</option>`).join('')}</select>
         </div>
         <div class="form-row"><label>Batch number</label><input type="text" id="comp-add-batch" placeholder="e.g. BAR-0726" /></div>
         <div class="form-row"><label>Quantity produced</label><input type="number" id="comp-add-qty" min="1" /></div>
@@ -1021,7 +1144,7 @@ document.getElementById('remove-component-stock-btn').addEventListener('click', 
         <h3>Remove component stock</h3>
         <div class="form-row">
           <label>Component</label>
-          <select id="comp-remove-picker">${components.map(c => `<option value="${c.component_id}">${c.name}</option>`).join('')}</select>
+          <select id="comp-remove-picker">${components.map(c => `<option value="${c.component_id}">${formatDisplayText(c.name)}</option>`).join('')}</select>
         </div>
         <div class="form-row"><label>Quantity to remove</label><input type="number" id="comp-remove-qty" min="1" /></div>
         <div class="form-row">
@@ -1151,7 +1274,7 @@ function addLineItemRow(selectedSkuId, qty, discountPct){
   row.id = rowId;
   row.style.gridTemplateColumns = '2fr 0.8fr 0.8fr 0.8fr 1fr auto';
   row.innerHTML = `
-    <select class="li-sku" onchange="recalcOrderTotals()">${skus.map(s => `<option value="${s.sku_id}" data-rate="${s.basic_rate||0}" ${selectedSkuId===s.sku_id?'selected':''}>${s.name}</option>`).join('')}</select>
+    <select class="li-sku" onchange="recalcOrderTotals()">${skus.map(s => `<option value="${s.sku_id}" data-rate="${s.basic_rate||0}" ${selectedSkuId===s.sku_id?'selected':''}>${formatDisplayText(s.name)}</option>`).join('')}</select>
     <input type="number" class="li-qty" placeholder="Qty" min="1" value="${qty || ''}" oninput="recalcOrderTotals()" />
     <input type="number" class="li-disc" placeholder="Disc %" min="0" max="100" value="${discountPct || ''}" oninput="recalcOrderTotals()" />
     <div class="li-rate-display" style="font-size:13px;color:var(--text-secondary);padding:9px 0;">—</div>
@@ -1290,20 +1413,49 @@ async function deductStockForOrder(orderId, items){
   }
 }
 
-async function editReorderAt(type, id, currentValue, unit){
-  const newValue = prompt(`New reorder threshold (${unit}):`, currentValue);
-  if(newValue === null) return; // cancelled
-  const parsed = Number(newValue);
-  if(isNaN(parsed) || parsed < 0){ alert('Enter a valid number.'); return; }
+function openEditReorderModal(type, id, currentValue, unit, label){
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal" style="max-width:360px;">
+        <h3>Edit reorder threshold</h3>
+        <p style="font-size:13px;color:var(--text-secondary);margin:-8px 0 14px;">${label}</p>
+        <div class="form-row">
+          <label>Reorder at (${unit})</label>
+          <input type="number" id="reorder-edit-value" min="0" value="${currentValue}" autofocus />
+        </div>
+        <div class="modal-actions">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="submitEditReorderAt('${type}', '${id}', '${unit}')">Save</button>
+        </div>
+      </div>
+    </div>`;
+  setTimeout(() => document.getElementById('reorder-edit-value')?.focus(), 0);
+}
+
+async function submitEditReorderAt(type, id, unit){
+  const raw = document.getElementById('reorder-edit-value').value;
+  const parsed = Number(raw);
+  if(raw === '' || isNaN(parsed) || parsed < 0){ alert('Enter a valid number.'); return; }
 
   if(type === 'sku'){
-    const { error } = await sb.from('skus').update({ reorder_at: parsed }).eq('id', id);
+    // Supabase doesn't error on a zero-row match, so .select() lets us confirm
+    // a row was actually updated rather than silently doing nothing. We try
+    // sku_id first (matches the sku_stock view), then fall back to id in case
+    // the underlying skus table uses a different primary key name.
+    let { data, error } = await sb.from('skus').update({ reorder_at: parsed }).eq('sku_id', id).select();
+    if(!error && (!data || data.length === 0)){
+      ({ data, error } = await sb.from('skus').update({ reorder_at: parsed }).eq('id', id).select());
+    }
     if(error){ alert('Error: ' + error.message); return; }
+    if(!data || data.length === 0){ alert("Couldn't find that product to update — the reorder value wasn't saved."); return; }
+    closeModal();
     await loadSkus();
+    await loadNearestBatches();
     renderInventory();
   } else {
-    const { error } = await sb.from('components').update({ reorder_at: parsed }).eq('id', id);
+    const { error } = await sb.from('component_stock').update({ reorder_at: parsed }).eq('component_id', id);
     if(error){ alert('Error: ' + error.message); return; }
+    closeModal();
     await loadComponents();
     renderComponents();
   }
@@ -1336,8 +1488,8 @@ function exportToCSV(rows, headers, filename){
 }
 
 document.getElementById('inv-export-btn').addEventListener('click', () => {
-  const rows = skus.map(s => ({ name:s.name, category:s.category, subtype:s.subtype, current_stock:s.current_stock, reorder_at:s.reorder_at, nearest_expiry:s.nearest_expiry }));
-  exportToCSV(rows, ['name','category','subtype','current_stock','reorder_at','nearest_expiry'], 'sterix-inventory.csv');
+  const rows = skus.map(s => ({ name:formatDisplayText(s.name), category:formatDisplayText(s.category), pack_type:formatDisplayText(s.subtype), current_stock:s.current_stock, reorder_at:s.reorder_at, nearest_expiry:s.nearest_expiry }));
+  exportToCSV(rows, ['name','category','pack_type','current_stock','reorder_at','nearest_expiry'], 'sterix-inventory.csv');
 });
 
 document.getElementById('ord-export-btn').addEventListener('click', () => {
