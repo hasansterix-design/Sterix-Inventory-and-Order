@@ -224,15 +224,31 @@
     <div id="dash-alert-wrap"></div>
     <div class="stats" id="dash-summary-stats"></div>
 
-    <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-top:18px;align-items:start;">
+    <div class="table-card" style="margin-top:18px;">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
+        <strong style="font-size:14px;color:var(--navy);">Production needed for confirmed orders</strong>
+        <p style="font-size:12px;color:var(--text-secondary);margin:4px 0 0;">Compares stock against quantity committed to orders at Confirmed stage or later (Received and Dispatched excluded), and checks if the shortfall can be built from current component stock.</p>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Product</th><th>Stock</th><th>Committed</th><th>Shortfall</th><th>Can build shortfall?</th></tr>
+        </thead>
+        <tbody id="dash-production-body"></tbody>
+      </table>
+      <div class="empty-state hidden" id="dash-production-empty">No confirmed orders currently exceed available stock.</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;align-items:start;">
       <div class="table-card">
-        <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
-          <strong style="font-size:14px;color:var(--navy);">Needs reordering</strong>
+        <div style="padding:10px 14px;border-bottom:1px solid var(--border);">
+          <strong style="font-size:12px;color:var(--navy);">Needs reordering</strong>
         </div>
-        <table>
-          <tbody id="dash-reorder-body"></tbody>
-        </table>
-        <div class="empty-state hidden" id="dash-reorder-empty">Nothing needs reordering right now.</div>
+        <div style="max-height:240px;overflow-y:auto;">
+          <table style="font-size:12px;">
+            <tbody id="dash-reorder-body"></tbody>
+          </table>
+        </div>
+        <div class="empty-state hidden" id="dash-reorder-empty" style="padding:24px 16px;font-size:12px;">Nothing needs reordering right now.</div>
       </div>
 
       <div class="table-card">
@@ -246,20 +262,6 @@
         </div>
         <div class="empty-state hidden" id="dash-expiry-empty" style="padding:24px 16px;font-size:12px;">Nothing expiring in the next 6 months.</div>
       </div>
-    </div>
-
-    <div class="table-card" style="margin-top:16px;">
-      <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
-        <strong style="font-size:14px;color:var(--navy);">Production needed for confirmed orders</strong>
-        <p style="font-size:12px;color:var(--text-secondary);margin:4px 0 0;">Compares stock against quantity committed to orders at Confirmed stage or later (Received and Dispatched excluded), and checks if the shortfall can be built from current component stock.</p>
-      </div>
-      <table>
-        <thead>
-          <tr><th>Product</th><th>Stock</th><th>Committed</th><th>Shortfall</th><th>Can build shortfall?</th></tr>
-        </thead>
-        <tbody id="dash-production-body"></tbody>
-      </table>
-      <div class="empty-state hidden" id="dash-production-empty">No confirmed orders currently exceed available stock.</div>
     </div>
   </div>
 
