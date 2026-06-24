@@ -74,6 +74,8 @@
   .toolbar select{padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-md);font-size:14px;background:var(--card);color:var(--text);}
   .btn{padding:9px 16px;border-radius:var(--radius-md);font-size:14px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--text);display:inline-flex;align-items:center;gap:6px;}
   .btn-primary{background:var(--navy);color:white;border-color:var(--navy);}
+  .btn-teal{background:var(--teal);color:white;border-color:var(--teal);}
+  .btn-danger{background:var(--danger);color:white;border-color:var(--danger);}
   .btn-primary:hover{background:var(--navy-light);}
   .btn:hover{background:var(--bg);}
 
@@ -266,7 +268,7 @@
 
   <div id="dashboard-tab">
     <div class="toolbar" style="justify-content:flex-end;">
-      <button class="btn btn-primary" id="dash-export-reorder-btn">Export reorder list</button>
+      <button class="btn btn-teal" id="dash-export-reorder-btn">Export reorder list</button>
     </div>
     <div id="dash-alert-wrap"></div>
     <div class="stats" id="dash-summary-stats"></div>
@@ -333,10 +335,10 @@
           <option value="low">Low stock</option>
           <option value="critical">Reorder now</option>
         </select>
-        <button class="btn" id="inv-export-btn">Export to Excel</button>
+        <button class="btn btn-teal" id="inv-export-btn">Export to Excel</button>
         <button class="btn btn-primary" id="add-stock-btn">Add stock</button>
-        <button class="btn" id="remove-stock-btn">Remove stock</button>
-        <button class="btn" id="add-sku-btn">Add product</button>
+        <button class="btn btn-danger" id="remove-stock-btn">Remove stock</button>
+        <button class="btn btn-primary" id="add-sku-btn">Add product</button>
       </div>
 
       <div id="inv-alert-wrap"></div>
@@ -362,7 +364,7 @@
       <div class="toolbar">
         <input type="text" id="comp-search" placeholder="Search component..." />
         <button class="btn btn-primary" id="add-component-stock-btn">Add stock</button>
-        <button class="btn" id="remove-component-stock-btn">Remove stock</button>
+        <button class="btn btn-danger" id="remove-component-stock-btn">Remove stock</button>
       </div>
 
       <div id="comp-alert-wrap"></div>
@@ -419,9 +421,9 @@
         <label for="ord-date-to" style="font-size:12px;color:var(--text-secondary);font-weight:600;white-space:nowrap;">To</label>
         <input type="date" id="ord-date-to" title="To date" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-md);font-size:14px;background:var(--card);" />
       </div>
-      <button class="btn" id="ord-export-btn">Export to Excel</button>
+      <button class="btn btn-teal" id="ord-export-btn">Export to Excel</button>
       <button class="btn btn-primary" id="new-order-btn">Add order</button>
-      <button class="btn" id="remove-order-btn">Remove order</button>
+      <button class="btn btn-danger" id="remove-order-btn">Remove order</button>
       <button class="btn" id="ord-settings-btn" title="Alert settings">⚙</button>
     </div>
 
@@ -1043,14 +1045,7 @@ function renderInventory(){
     <div class="stat-card"><p class="stat-label">Expiring &lt;6mo</p><p class="stat-value warning">${expiringSoon.length}</p></div>
   `;
 
-  if(critical.length > 0){
-    document.getElementById('inv-alert-wrap').innerHTML = `
-      <div class="alert alert-danger">
-        ${critical.length} product${critical.length>1?'s':''} need reordering now: ${critical.map(s=>formatDisplayText(s.name)).join(', ')}
-      </div>`;
-  } else {
-    document.getElementById('inv-alert-wrap').innerHTML = '';
-  }
+  document.getElementById('inv-alert-wrap').innerHTML = '';
 
   const tbody = document.getElementById('inv-table-body');
   document.getElementById('inv-empty').classList.toggle('hidden', filtered.length > 0);
