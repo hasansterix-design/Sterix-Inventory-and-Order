@@ -342,8 +342,14 @@
         <option value="qc">QC</option>
         <option value="dispatched">Dispatched</option>
       </select>
-      <input type="date" id="ord-date-from" title="From date" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-md);font-size:14px;background:var(--card);" />
-      <input type="date" id="ord-date-to" title="To date" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-md);font-size:14px;background:var(--card);" />
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label for="ord-date-from" style="font-size:12px;color:var(--text-secondary);font-weight:600;white-space:nowrap;">From</label>
+        <input type="date" id="ord-date-from" title="From date" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-md);font-size:14px;background:var(--card);" />
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label for="ord-date-to" style="font-size:12px;color:var(--text-secondary);font-weight:600;white-space:nowrap;">To</label>
+        <input type="date" id="ord-date-to" title="To date" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-md);font-size:14px;background:var(--card);" />
+      </div>
       <button class="btn" id="ord-export-btn">Export to Excel</button>
       <button class="btn btn-primary" id="new-order-btn">Add order</button>
       <button class="btn" id="remove-order-btn">Remove order</button>
