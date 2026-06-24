@@ -177,11 +177,11 @@
 
   <div class="header">
     <div class="header-left">
-      <img src="sterix-icon.png" alt="Sterix Global" style="height:32px;" />
+      <img src="sterix-icon.png" alt="Sterix Global" style="height:52px;" />
       <div class="title-block">
         <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:0.8px;color:var(--teal);text-transform:uppercase;">Sterix Global · Inventory &amp; Orders</p>
         <p class="title" id="page-title">Inventory Tracker</p>
-        <p class="subtitle" id="page-subtitle">Stock across 5 categories · 12 products</p>
+        <p class="subtitle" id="page-subtitle"></p>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;">
@@ -201,6 +201,8 @@
             </div>
           </div>
           <button id="switch-profile-btn" class="btn" style="width:100%;margin-bottom:8px;">Switch profile</button>
+          <button id="manage-profiles-btn" class="btn hidden" style="width:100%;margin-bottom:8px;">Manage team profiles</button>
+          <button id="delete-own-profile-btn" class="btn" style="width:100%;margin-bottom:8px;color:var(--danger);border-color:var(--danger);">Delete my profile</button>
           <button id="logout-btn" class="btn" style="width:100%;color:var(--danger);border-color:var(--danger);">Log out</button>
         </div>
       </div>
@@ -217,13 +219,12 @@
 
   <div id="dashboard-tab">
     <div class="toolbar" style="justify-content:flex-end;">
-      <button class="btn" id="dash-export-reorder-btn">Export reorder list</button>
-      <button class="btn btn-primary" id="dash-whatsapp-reorder-btn">Send reorder via WhatsApp</button>
+      <button class="btn btn-primary" id="dash-export-reorder-btn">Export reorder list</button>
     </div>
     <div id="dash-alert-wrap"></div>
     <div class="stats" id="dash-summary-stats"></div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px;">
+    <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-top:18px;align-items:start;">
       <div class="table-card">
         <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
           <strong style="font-size:14px;color:var(--navy);">Needs reordering</strong>
@@ -235,24 +236,16 @@
       </div>
 
       <div class="table-card">
-        <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
-          <strong style="font-size:14px;color:var(--navy);">Expiring soon</strong>
+        <div style="padding:10px 14px;border-bottom:1px solid var(--border);">
+          <strong style="font-size:12px;color:var(--navy);">Expiring soon</strong>
         </div>
-        <table>
-          <tbody id="dash-expiry-body"></tbody>
-        </table>
-        <div class="empty-state hidden" id="dash-expiry-empty">Nothing expiring in the next 6 months.</div>
+        <div style="max-height:240px;overflow-y:auto;">
+          <table style="font-size:12px;">
+            <tbody id="dash-expiry-body"></tbody>
+          </table>
+        </div>
+        <div class="empty-state hidden" id="dash-expiry-empty" style="padding:24px 16px;font-size:12px;">Nothing expiring in the next 6 months.</div>
       </div>
-    </div>
-
-    <div class="table-card" style="margin-top:16px;">
-      <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
-        <strong style="font-size:14px;color:var(--navy);">Orders stuck in the pipeline</strong>
-      </div>
-      <table>
-        <tbody id="dash-stuck-body"></tbody>
-      </table>
-      <div class="empty-state hidden" id="dash-stuck-empty">No orders are stuck right now.</div>
     </div>
   </div>
 
@@ -395,7 +388,7 @@
       <table>
         <thead>
           <tr>
-            <th>Date &amp; time</th><th>Item</th><th>Type</th><th>Qty change</th><th>Batch</th><th>Note</th><th>By</th>
+            <th>Date &amp; time</th><th>Item</th><th>Type</th><th>Qty change</th><th>Batch</th><th>Note</th><th>By</th><th></th>
           </tr>
         </thead>
         <tbody id="hist-table-body"></tbody>
@@ -416,6 +409,13 @@ const SUPABASE_ANON_KEY = 'sb_publishable_WmkXH8a3wOWgIzPS6_FJvA_eJF5wCfi';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser = null;
+
+// Admin username — case-insensitive match. Only this account (and a user's own
+// profile) can delete a team member's profile.
+const ADMIN_USERNAME = 'hasan';
+function isAdmin(){
+  return !!currentUser && (currentUser.username || '').toLowerCase() === ADMIN_USERNAME;
+}
 let skus = [];
 let orders = [];
 let orderItems = [];
@@ -524,6 +524,7 @@ function showApp(){
   document.getElementById('user-avatar').textContent = name.charAt(0).toUpperCase();
   document.getElementById('user-name-panel').textContent = name;
   document.getElementById('user-avatar-panel').textContent = name.charAt(0).toUpperCase();
+  document.getElementById('manage-profiles-btn').classList.toggle('hidden', !isAdmin());
   loadAll();
 }
 
@@ -667,6 +668,48 @@ document.getElementById('logout-btn').addEventListener('click', () => {
   showLogin();
 });
 
+document.getElementById('delete-own-profile-btn').addEventListener('click', async () => {
+  if(!confirm(`Delete your profile (${currentUser.username})? This can't be undone — you'll need a new profile or the team code to sign back in.`)) return;
+  const { error } = await sb.from('team_members').delete().ilike('username', currentUser.username);
+  if(error){ alert('Error: ' + error.message); return; }
+  localStorage.removeItem('sterix_lead_user');
+  currentUser = null;
+  document.getElementById('profile-panel').style.display = 'none';
+  switchAuthTab('signIn');
+  showLogin();
+});
+
+document.getElementById('manage-profiles-btn').addEventListener('click', async () => {
+  if(!isAdmin()) return;
+  const { data, error } = await sb.from('team_members').select('username').order('username');
+  if(error){ alert('Error: ' + error.message); return; }
+
+  const others = (data || []).filter(m => m.username.toLowerCase() !== ADMIN_USERNAME);
+  document.getElementById('profile-panel').style.display = 'none';
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal" style="max-width:380px;">
+        <h3>Manage team profiles</h3>
+        <p style="font-size:13px;color:var(--text-secondary);margin:-8px 0 14px;">As the admin account, you can remove any team member's profile. This can't be undone.</p>
+        ${others.length === 0 ? '<p style="font-size:13px;color:var(--text-tertiary);">No other profiles found.</p>' : others.map(m => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+            <span style="font-size:14px;">${m.username}</span>
+            <button class="btn" style="color:var(--danger);border-color:var(--danger);padding:5px 12px;" onclick="adminDeleteProfile('${m.username.replace(/'/g, "\\'")}')">Delete</button>
+          </div>`).join('')}
+        <div class="modal-actions">
+          <button class="btn" onclick="closeModal()">Close</button>
+        </div>
+      </div>
+    </div>`;
+});
+
+async function adminDeleteProfile(username){
+  if(!confirm(`Delete the profile for "${username}"? This can't be undone.`)) return;
+  const { error } = await sb.from('team_members').delete().ilike('username', username);
+  if(error){ alert('Error: ' + error.message); return; }
+  document.getElementById('manage-profiles-btn').click();
+}
+
 document.querySelectorAll('.tab[data-tab]').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.remove('active'));
@@ -679,24 +722,12 @@ document.querySelectorAll('.tab[data-tab]').forEach(tab => {
 
     const titles = { dashboard: 'Dashboard', inventory: 'Inventory Tracker', orders: 'Order Management', history: 'Movement History' };
     document.getElementById('page-title').textContent = titles[which];
-
-    if(which === 'inventory'){
-      updateInventorySubtitle();
-    } else {
-      document.getElementById('page-subtitle').textContent = '';
-    }
+    document.getElementById('page-subtitle').textContent = '';
 
     if(which === 'dashboard'){ renderDashboard(); }
     if(which === 'history'){ renderHistory(); }
   });
 });
-
-function updateInventorySubtitle(){
-  const activeSub = document.querySelector('.sub-tab.active')?.dataset.subtab || 'finished';
-  document.getElementById('page-subtitle').textContent = activeSub === 'finished'
-    ? `Stock across ${new Set(skus.map(s=>s.category)).size} categories · ${skus.length} products`
-    : '';
-}
 
 document.querySelectorAll('.sub-tab[data-subtab]').forEach(subtab => {
   subtab.addEventListener('click', () => {
@@ -705,7 +736,6 @@ document.querySelectorAll('.sub-tab[data-subtab]').forEach(subtab => {
     const which = subtab.dataset.subtab;
     document.getElementById('finished-subtab').classList.toggle('hidden', which !== 'finished');
     document.getElementById('components-subtab').classList.toggle('hidden', which !== 'components');
-    updateInventorySubtitle();
   });
 });
 
@@ -1134,7 +1164,7 @@ function renderDashboard(){
     ...criticalComponents.map(c => ({ type: 'Component', name: formatDisplayText(c.name), current: c.current_stock, reorder_at: c.reorder_at, unit: c.unit, urgency: 'critical' })),
     ...lowComponents.map(c => ({ type: 'Component', name: formatDisplayText(c.name), current: c.current_stock, reorder_at: c.reorder_at, unit: c.unit, urgency: 'low' })),
   ];
-  window._dashReorderRows = reorderRows; // stashed for export/WhatsApp actions
+  window._dashReorderRows = reorderRows; // stashed for the export-to-CSV action
 
   document.getElementById('dash-reorder-empty').classList.toggle('hidden', reorderRows.length > 0);
   document.getElementById('dash-reorder-body').innerHTML = reorderRows.map(r => `
@@ -1156,32 +1186,7 @@ function renderDashboard(){
         <td class="text-right"><span class="pill ${urgentClass}">${new Date(b.expiry_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span></td>
       </tr>`;
   }).join('');
-
-  // Stuck orders
-  document.getElementById('dash-stuck-empty').classList.toggle('hidden', stuckOrders.length > 0);
-  document.getElementById('dash-stuck-body').innerHTML = stuckOrders.map(o => {
-    const days = Math.floor((Date.now() - new Date(o.stage_entered_at)) / 86400000);
-    return `
-      <tr>
-        <td><strong>${o.order_no}</strong> — ${o.customer_name}</td>
-        <td>${STAGE_LABELS[o.stage]}</td>
-        <td class="text-right">${days} day${days !== 1 ? 's' : ''}</td>
-      </tr>`;
-  }).join('');
 }
-
-function buildReorderListText(){
-  const rows = window._dashReorderRows || [];
-  if(rows.length === 0) return 'Nothing currently needs reordering.';
-  const lines = rows.map(r => `• ${r.name} (${r.type}) — ${Number(r.current).toLocaleString('en-IN')} ${r.unit} left, reorder at ${Number(r.reorder_at).toLocaleString('en-IN')} ${r.unit}`);
-  return `Sterix Global — Reorder list (${new Date().toLocaleDateString('en-IN')}):\n\n${lines.join('\n')}`;
-}
-
-document.getElementById('dash-whatsapp-reorder-btn').addEventListener('click', () => {
-  const text = buildReorderListText();
-  const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-  window.open(url, '_blank');
-});
 
 document.getElementById('dash-export-reorder-btn').addEventListener('click', () => {
   const rows = (window._dashReorderRows || []).map(r => ({ type: r.type, name: r.name, current_stock: r.current, reorder_at: r.reorder_at, unit: r.unit }));
@@ -1197,12 +1202,12 @@ const MOVEMENT_TYPE_LABELS = {
 
 function buildCombinedHistory(){
   const productRows = stockMovements.map(m => ({
-    created_at: m.created_at, item: formatDisplayText(m.skus?.name) || '—', source: 'product',
+    id: m.id, created_at: m.created_at, item: formatDisplayText(m.skus?.name) || '—', source: 'product',
     movement_type: m.movement_type, qty_change: m.qty_change, batch_id: m.batch_id,
     note: m.note || '', created_by: m.created_by || '—'
   }));
   const componentRows = componentMovements.map(m => ({
-    created_at: m.created_at, item: formatDisplayText(m.component_stock?.name) || '—', source: 'component',
+    id: m.id, created_at: m.created_at, item: formatDisplayText(m.component_stock?.name) || '—', source: 'component',
     movement_type: m.movement_type, qty_change: m.qty_change, batch_id: m.batch_id,
     note: m.note || '', created_by: m.created_by || '—'
   }));
@@ -1225,6 +1230,9 @@ function renderHistory(){
   const tbody = document.getElementById('hist-table-body');
   document.getElementById('hist-empty').classList.toggle('hidden', filtered.length > 0);
 
+  window._histRowsById = {};
+  filtered.forEach(h => { window._histRowsById[h.id] = h; });
+
   tbody.innerHTML = filtered.slice(0, 300).map(h => {
     const qtyDisplay = h.qty_change > 0 ? `+${Number(h.qty_change).toLocaleString('en-IN')}` : Number(h.qty_change).toLocaleString('en-IN');
     const qtyColor = h.qty_change > 0 ? 'var(--success)' : 'var(--danger)';
@@ -1239,8 +1247,63 @@ function renderHistory(){
         <td>${h.batch_id ? h.batch_id.slice(0,8) : '—'}</td>
         <td>${h.note || '—'}</td>
         <td>${h.created_by}</td>
+        <td>
+          <div style="display:flex;gap:4px;">
+            <button class="icon-btn" onclick="openEditMovementModal('${h.id}')" aria-label="Edit movement">✎</button>
+            <button class="icon-btn" onclick="deleteMovement('${h.id}', '${h.source}')" aria-label="Delete movement" style="color:var(--danger);">🗑</button>
+          </div>
+        </td>
       </tr>`;
   }).join('');
+}
+
+function openEditMovementModal(id){
+  const h = window._histRowsById[id];
+  if(!h){ alert('Could not find that movement record.'); return; }
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal">
+        <h3>Edit movement — ${h.item}</h3>
+        <p style="font-size:13px;color:var(--text-secondary);margin:-8px 0 14px;">This updates the audit record. The related stock totals are not recalculated automatically — adjust stock separately if the quantity here was wrong.</p>
+        <div class="form-row">
+          <label>Movement type</label>
+          <select id="edit-mvmt-type">
+            ${Object.entries(MOVEMENT_TYPE_LABELS).map(([val,label]) => `<option value="${val}" ${h.movement_type===val?'selected':''}>${label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row"><label>Quantity change</label><input type="number" id="edit-mvmt-qty" value="${h.qty_change}" /></div>
+        <div class="form-row"><label>Note</label><input type="text" id="edit-mvmt-note" value="${(h.note||'').replace(/"/g,'&quot;')}" /></div>
+        <div class="modal-actions">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="submitEditMovement('${h.id}', '${h.source}')">Save changes</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function submitEditMovement(id, source){
+  const movementType = document.getElementById('edit-mvmt-type').value;
+  const qtyChange = Number(document.getElementById('edit-mvmt-qty').value);
+  const note = document.getElementById('edit-mvmt-note').value.trim();
+  if(isNaN(qtyChange)){ alert('Enter a valid quantity.'); return; }
+
+  const table = source === 'product' ? 'stock_movements' : 'component_movements';
+  const { error } = await sb.from(table).update({ movement_type: movementType, qty_change: qtyChange, note }).eq('id', id);
+  if(error){ alert('Error: ' + error.message); return; }
+
+  closeModal();
+  await loadMovements();
+  renderHistory();
+}
+
+async function deleteMovement(id, source){
+  if(!confirm('Delete this movement record? This only removes the audit entry — it does not change current stock levels.')) return;
+  const table = source === 'product' ? 'stock_movements' : 'component_movements';
+  const { error } = await sb.from(table).delete().eq('id', id);
+  if(error){ alert('Error: ' + error.message); return; }
+
+  await loadMovements();
+  renderHistory();
 }
 
 ['hist-search','hist-type-filter','hist-source-filter'].forEach(id => {
