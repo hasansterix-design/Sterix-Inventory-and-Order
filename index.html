@@ -42,12 +42,28 @@
   .app{max-width:1280px;margin:0 auto;padding:20px 24px 60px;}
 
   .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
-  .header-left{display:flex;align-items:center;gap:14px;}
-  .title-block .title{font-size:19px;font-weight:600;color:var(--navy);margin:0;}
+  .header-left{display:flex;align-items:center;gap:14px;min-width:0;}
+  .header-logo{height:52px;flex-shrink:0;}
+  .header-tagline{margin:0;font-size:11px;font-weight:700;letter-spacing:0.8px;color:var(--teal);text-transform:uppercase;white-space:nowrap;}
+  .title-block{min-width:0;}
+  .title-block .title{font-size:19px;font-weight:600;color:var(--navy);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .title-block .subtitle{font-size:13px;color:var(--text-secondary);margin:2px 0 0;}
-  .avatar{width:30px;height:30px;border-radius:50%;background:var(--teal);color:white;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--teal);color:white;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;flex-shrink:0;}
+  .header-user-pill{display:flex;align-items:center;gap:8px;padding:4px 12px 4px 4px;font-size:14px;color:var(--text);}
+  .hamburger-btn{display:none;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);width:36px;height:36px;font-size:17px;color:var(--navy);cursor:pointer;}
+  .profile-trigger{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:7px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--navy);}
+  .profile-panel{display:none;position:absolute;right:0;top:calc(100% + 8px);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;min-width:200px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:40;}
+
+  body.view-mobile .header-tagline,
+  body.view-mobile .header-user-pill,
+  body.view-mobile .profile-trigger{display:none;}
+  body.view-mobile .hamburger-btn{display:flex;align-items:center;justify-content:center;}
+  body.view-mobile .header-logo{height:34px;}
+  body.view-mobile .title-block .title{font-size:16px;}
 
   .tabs{display:flex;gap:4px;margin-bottom:18px;border-bottom:1px solid var(--border);}
+  body.view-mobile .tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;}
+  body.view-mobile .tab{white-space:nowrap;flex-shrink:0;padding:10px 14px;font-size:13px;}
   .tab{padding:10px 18px;font-size:14px;font-weight:600;color:var(--text-secondary);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;border-radius:8px 8px 0 0;}
   .sub-tab{padding:6px 14px;font-size:13px;font-weight:600;color:var(--text-secondary);background:var(--bg);border:1px solid var(--border);cursor:pointer;border-radius:20px;}
   .sub-tab.active{color:white;background:var(--teal);border-color:var(--teal);}
@@ -137,6 +153,31 @@
     .scroll-hint{display:block;}
   }
   .scroll-hint{display:none;font-size:12px;color:var(--text-tertiary);text-align:right;padding:6px 14px 0;}
+
+  .dash-two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;align-items:start;}
+
+  .mobile-only-cards{display:none;}
+  .card-list{padding:10px;display:flex;flex-direction:column;gap:8px;}
+  .info-card{background:var(--bg);border-radius:var(--radius-md);padding:10px 12px;}
+  .info-card-title{font-size:13px;font-weight:600;color:var(--text);margin:0 0 6px;}
+  .info-card-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:var(--text-secondary);}
+  .info-card-row + .info-card-row{margin-top:4px;}
+  .info-card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
+
+  body.view-mobile .desktop-only-table{display:none;}
+  body.view-mobile .mobile-only-cards{display:flex;flex-direction:column;gap:8px;}
+  body.view-mobile .dash-two-col{grid-template-columns:1fr;}
+  body.view-mobile .table-card{overflow-x:visible;}
+  body.view-mobile table{min-width:0;}
+  body.view-mobile .scroll-hint{display:none;}
+  body.view-mobile .stats{grid-template-columns:repeat(2,1fr);}
+  body.view-mobile .stats.stats-wide{grid-template-columns:repeat(2,1fr);}
+  body.view-mobile .toolbar select{display:none;}
+  body.view-mobile .toolbar select.essential-filter{display:block;width:100%;}
+
+  body.view-desktop .mobile-only-cards{display:none;}
+  body.view-desktop .desktop-only-table{display:table;}
+  body.view-desktop .table-card{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 </style>
 </head>
 <body>
@@ -177,21 +218,22 @@
 
   <div class="header">
     <div class="header-left">
-      <img src="sterix-icon.png" alt="Sterix Global" style="height:52px;" />
+      <img src="sterix-icon.png" alt="Sterix Global" class="header-logo" />
       <div class="title-block">
-        <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:0.8px;color:var(--teal);text-transform:uppercase;">Sterix Global · Inventory &amp; Orders</p>
+        <p class="header-tagline">Sterix Global · Inventory &amp; Orders</p>
         <p class="title" id="page-title">Inventory Tracker</p>
         <p class="subtitle" id="page-subtitle"></p>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;">
-      <div style="display:flex;align-items:center;gap:8px;padding:4px 12px 4px 4px;font-size:14px;color:var(--text);">
+      <div class="header-user-pill">
         <div class="avatar" id="user-avatar">H</div>
         <span id="user-name">—</span>
       </div>
+      <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">☰</button>
       <div class="profile-wrap" style="position:relative;">
-        <button class="profile-trigger" id="profile-trigger" style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:7px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--navy);">Profile</button>
-        <div class="profile-panel" id="profile-panel" style="display:none;position:absolute;right:0;top:calc(100% + 8px);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;min-width:200px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:40;">
+        <button class="profile-trigger" id="profile-trigger">Profile</button>
+        <div class="profile-panel" id="profile-panel">
           <p style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.4px;margin:0 0 10px;">My profile</p>
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
             <div class="avatar" id="user-avatar-panel">H</div>
@@ -200,6 +242,7 @@
               <span style="font-size:12px;color:var(--text-secondary);">Sterix Global</span>
             </div>
           </div>
+          <button id="view-toggle-btn" class="btn" style="width:100%;margin-bottom:8px;"><span class="view-toggle-label">Switch to mobile view</span></button>
           <button id="switch-profile-btn" class="btn" style="width:100%;margin-bottom:8px;">Switch profile</button>
           <button id="manage-profiles-btn" class="btn hidden" style="width:100%;margin-bottom:8px;">Manage team profiles</button>
           <button id="delete-own-profile-btn" class="btn" style="width:100%;margin-bottom:8px;color:var(--danger);border-color:var(--danger);">Delete my profile</button>
@@ -229,24 +272,26 @@
         <strong style="font-size:14px;color:var(--navy);">Production needed for confirmed orders</strong>
         <p style="font-size:12px;color:var(--text-secondary);margin:4px 0 0;">Compares stock against quantity committed to orders at Confirmed stage or later (Received and Dispatched excluded), and checks if the shortfall can be built from current component stock.</p>
       </div>
-      <table>
+      <table class="desktop-only-table">
         <thead>
           <tr><th>Product</th><th>Stock</th><th>Committed</th><th>Shortfall</th><th>Can build shortfall?</th></tr>
         </thead>
         <tbody id="dash-production-body"></tbody>
       </table>
+      <div class="card-list mobile-only-cards" id="dash-production-cards"></div>
       <div class="empty-state hidden" id="dash-production-empty">No confirmed orders currently exceed available stock.</div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;align-items:start;">
+    <div class="dash-two-col">
       <div class="table-card">
         <div style="padding:10px 14px;border-bottom:1px solid var(--border);">
           <strong style="font-size:12px;color:var(--navy);">Needs reordering</strong>
         </div>
         <div style="max-height:240px;overflow-y:auto;">
-          <table style="font-size:12px;">
+          <table class="desktop-only-table" style="font-size:12px;">
             <tbody id="dash-reorder-body"></tbody>
           </table>
+          <div class="card-list mobile-only-cards" id="dash-reorder-cards"></div>
         </div>
         <div class="empty-state hidden" id="dash-reorder-empty" style="padding:24px 16px;font-size:12px;">Nothing needs reordering right now.</div>
       </div>
@@ -256,9 +301,10 @@
           <strong style="font-size:12px;color:var(--navy);">Expiring soon</strong>
         </div>
         <div style="max-height:240px;overflow-y:auto;">
-          <table style="font-size:12px;">
+          <table class="desktop-only-table" style="font-size:12px;">
             <tbody id="dash-expiry-body"></tbody>
           </table>
+          <div class="card-list mobile-only-cards" id="dash-expiry-cards"></div>
         </div>
         <div class="empty-state hidden" id="dash-expiry-empty" style="padding:24px 16px;font-size:12px;">Nothing expiring in the next 6 months.</div>
       </div>
@@ -277,7 +323,7 @@
         <select id="inv-category-filter">
           <option value="">All categories</option>
         </select>
-        <select id="inv-status-filter">
+        <select id="inv-status-filter" class="essential-filter">
           <option value="">All statuses</option>
           <option value="ok">In stock</option>
           <option value="low">Low stock</option>
@@ -293,7 +339,7 @@
       <div class="stats" id="inv-stats"></div>
 
       <div class="table-card">
-        <table>
+        <table class="desktop-only-table">
           <thead>
             <tr>
               <th>#</th><th>Product</th><th>Pack Type</th><th>Batch No.</th><th>Expiry</th><th>Stock</th><th>Committed</th><th>Reorder At</th><th>Status</th>
@@ -301,6 +347,7 @@
           </thead>
           <tbody id="inv-table-body"></tbody>
         </table>
+        <div class="card-list mobile-only-cards" id="inv-cards"></div>
         <div class="empty-state hidden" id="inv-empty">No products match your filters.</div>
         <p class="scroll-hint">swipe to see more →</p>
       </div>
@@ -318,7 +365,7 @@
       <div class="stats" id="comp-stats"></div>
 
       <div class="table-card">
-        <table>
+        <table class="desktop-only-table">
           <thead>
             <tr>
               <th>Component</th><th>Stock</th><th>Reorder At</th><th>Status</th>
@@ -326,6 +373,7 @@
           </thead>
           <tbody id="comp-table-body"></tbody>
         </table>
+        <div class="card-list mobile-only-cards" id="comp-cards"></div>
         <div class="empty-state hidden" id="comp-empty">No components match your search.</div>
       </div>
 
@@ -334,12 +382,13 @@
           <strong style="font-size:14px;color:var(--navy);">Buildable units from current component stock</strong>
           <p style="font-size:12px;color:var(--text-secondary);margin:4px 0 0;">Based on each product's bill of materials. Shows the limiting component for products you can't fully build.</p>
         </div>
-        <table>
+        <table class="desktop-only-table">
           <thead>
             <tr><th>Product</th><th>Can build</th><th>Limited by</th></tr>
           </thead>
           <tbody id="buildable-table-body"></tbody>
         </table>
+        <div class="card-list mobile-only-cards" id="buildable-cards"></div>
         <div class="empty-state hidden" id="buildable-empty">No bill-of-materials data found. Run the BOM migration in Supabase to enable this.</div>
       </div>
     </div>
@@ -348,7 +397,7 @@
   <div id="orders-tab" class="hidden">
     <div class="toolbar">
       <input type="text" id="ord-search" placeholder="Search order ID, company, city, or product..." />
-      <select id="ord-stage-filter">
+      <select id="ord-stage-filter" class="essential-filter">
         <option value="">All stages</option>
         <option value="received">Received</option>
         <option value="confirmed">Confirmed</option>
@@ -377,7 +426,7 @@
     <div class="stats" id="ord-stats-secondary" style="grid-template-columns:repeat(2,1fr);"></div>
 
     <div class="table-card">
-      <table>
+      <table class="desktop-only-table">
         <thead>
           <tr>
             <th>Order</th><th>Customer</th><th>Items</th><th>Value</th><th>Stage</th><th></th>
@@ -385,6 +434,7 @@
         </thead>
         <tbody id="ord-table-body"></tbody>
       </table>
+      <div class="card-list mobile-only-cards" id="ord-cards"></div>
       <div class="empty-state hidden" id="ord-empty">No orders match your filters.</div>
       <p class="scroll-hint">swipe to see more →</p>
     </div>
@@ -393,21 +443,21 @@
   <div id="history-tab" class="hidden">
     <div class="toolbar">
       <input type="text" id="hist-search" placeholder="Search by product, component, batch, or user..." />
-      <select id="hist-type-filter">
+      <select id="hist-type-filter" class="essential-filter">
         <option value="">All movement types</option>
         <option value="receive">Receive / Produce</option>
         <option value="dispatch">Dispatch</option>
         <option value="consume">Consume</option>
         <option value="adjustment">Adjustment</option>
       </select>
-      <select id="hist-source-filter">
+      <select id="hist-source-filter" class="essential-filter">
         <option value="">Products + components</option>
         <option value="product">Products only</option>
         <option value="component">Components only</option>
       </select>
     </div>
     <div class="table-card">
-      <table>
+      <table class="desktop-only-table">
         <thead>
           <tr>
             <th>Date &amp; time</th><th>Item</th><th>Type</th><th>Qty change</th><th>Batch</th><th>Note</th><th>By</th><th></th>
@@ -415,6 +465,7 @@
         </thead>
         <tbody id="hist-table-body"></tbody>
       </table>
+      <div class="card-list mobile-only-cards" id="hist-cards"></div>
       <div class="empty-state hidden" id="hist-empty">No movements match your filters.</div>
       <p class="scroll-hint">swipe to see more →</p>
     </div>
@@ -431,6 +482,57 @@ const SUPABASE_ANON_KEY = 'sb_publishable_WmkXH8a3wOWgIzPS6_FJvA_eJF5wCfi';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser = null;
+
+// ---------------- View mode (mobile cards vs desktop tables) ----------------
+// Auto-detects by screen width, but a manual override (saved per-browser)
+// always wins if the person has explicitly picked a view. Re-checks on resize
+// so rotating a phone or resizing a window can switch the auto-detected mode,
+// without ever overriding an explicit manual choice.
+const VIEW_MODE_KEY = 'sterix_view_mode_override'; // 'mobile' | 'desktop' | absent (auto)
+const MOBILE_BREAKPOINT = 768;
+let currentViewMode = 'desktop'; // resolved value used by all render functions
+
+function getViewModeOverride(){
+  const saved = localStorage.getItem(VIEW_MODE_KEY);
+  return (saved === 'mobile' || saved === 'desktop') ? saved : null;
+}
+
+function resolveViewMode(){
+  const override = getViewModeOverride();
+  if(override) return override;
+  return window.innerWidth <= MOBILE_BREAKPOINT ? 'mobile' : 'desktop';
+}
+
+function applyViewMode(){
+  const resolved = resolveViewMode();
+  const changed = resolved !== currentViewMode;
+  currentViewMode = resolved;
+  document.body.classList.toggle('view-mobile', resolved === 'mobile');
+  document.body.classList.toggle('view-desktop', resolved === 'desktop');
+  const toggleLabel = resolved === 'mobile' ? 'Switch to desktop view' : 'Switch to mobile view';
+  document.querySelectorAll('.view-toggle-label').forEach(el => { el.textContent = toggleLabel; });
+  if(changed && currentUser){ rerenderActiveTab(); }
+}
+
+function setViewModeOverride(mode){
+  if(mode === null){ localStorage.removeItem(VIEW_MODE_KEY); } else { localStorage.setItem(VIEW_MODE_KEY, mode); }
+  applyViewMode();
+}
+
+function toggleViewMode(){
+  const next = currentViewMode === 'mobile' ? 'desktop' : 'mobile';
+  setViewModeOverride(next);
+}
+
+function rerenderActiveTab(){
+  const active = document.querySelector('.tab.active')?.dataset.tab || 'dashboard';
+  if(active === 'dashboard') renderDashboard();
+  if(active === 'inventory'){ renderInventory(); renderComponents(); renderBuildableUnits(); }
+  if(active === 'orders') renderOrders();
+  if(active === 'history') renderHistory();
+}
+
+window.addEventListener('resize', () => { applyViewMode(); });
 
 // Admin username — case-insensitive match. Only this account (and a user's own
 // profile) can delete a team member's profile.
@@ -547,6 +649,7 @@ function showApp(){
   document.getElementById('user-name-panel').textContent = name;
   document.getElementById('user-avatar-panel').textContent = name.charAt(0).toUpperCase();
   document.getElementById('manage-profiles-btn').classList.toggle('hidden', !isAdmin());
+  applyViewMode();
   loadAll();
 }
 
@@ -657,17 +760,25 @@ document.getElementById('signup-btn').addEventListener('click', async () => {
   showApp();
 });
 
-document.getElementById('profile-trigger').addEventListener('click', (e) => {
-  e.stopPropagation();
+function toggleProfilePanel(e){
+  if(e) e.stopPropagation();
   const panel = document.getElementById('profile-panel');
-  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-});
+  panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+}
+
+document.getElementById('profile-trigger').addEventListener('click', toggleProfilePanel);
+document.getElementById('hamburger-btn').addEventListener('click', toggleProfilePanel);
 
 document.addEventListener('click', (e) => {
   const wrap = document.querySelector('.profile-wrap');
-  if(wrap && !wrap.contains(e.target)){
+  if(wrap && !wrap.contains(e.target) && !e.target.closest('#hamburger-btn')){
     document.getElementById('profile-panel').style.display = 'none';
   }
+});
+
+document.getElementById('view-toggle-btn').addEventListener('click', () => {
+  toggleViewMode();
+  document.getElementById('profile-panel').style.display = 'none';
 });
 
 document.getElementById('switch-profile-btn').addEventListener('click', () => {
@@ -941,8 +1052,10 @@ function renderInventory(){
   document.getElementById('inv-empty').classList.toggle('hidden', filtered.length > 0);
 
   const committedBySku = computeCommittedQtyBySku();
+  const rowsHtml = [];
+  const cardsHtml = [];
 
-  tbody.innerHTML = filtered.map((s, idx) => {
+  filtered.forEach((s, idx) => {
     const status = stockStatus(s);
     const pillClass = status === 'ok' ? 'pill-ok' : status === 'low' ? 'pill-low' : 'pill-critical';
     const pillLabel = status === 'ok' ? 'In stock' : status === 'low' ? 'Low stock' : 'Reorder now';
@@ -953,8 +1066,9 @@ function renderInventory(){
     const batchLabel = nearestBatch ? nearestBatch.batch_no : '—';
     const displayName = buildDisplayName(stripPackTypeFromName(formatDisplayText(s.name), !!s.subtype), s.category);
     const committedQty = committedBySku[s.sku_id] || 0;
+    const reorderEditAttr = `onclick="openEditReorderModal('sku', '${s.sku_id}', ${s.reorder_at}, '${s.unit}', '${formatDisplayText(s.name).replace(/'/g, "\\'")}')"`;
 
-    return `
+    rowsHtml.push(`
       <tr>
         <td class="sku-sub">${idx + 1}</td>
         <td>
@@ -973,10 +1087,29 @@ function renderInventory(){
           </div>
         </td>
         <td>${committedQty > 0 ? `<span style="font-weight:600;color:${committedQty > s.current_stock ? 'var(--danger)' : 'var(--text)'};">${committedQty.toLocaleString('en-IN')} ${s.unit}</span>` : '<span class="sku-sub">—</span>'}</td>
-        <td><span class="reorder-edit" onclick="openEditReorderModal('sku', '${s.sku_id}', ${s.reorder_at}, '${s.unit}', '${formatDisplayText(s.name).replace(/'/g, "\\'")}')" style="cursor:pointer;border-bottom:1px dashed var(--text-tertiary);" title="Click to edit">${Number(s.reorder_at).toLocaleString('en-IN')} ${s.unit}</span></td>
+        <td><span class="reorder-edit" ${reorderEditAttr} style="cursor:pointer;border-bottom:1px dashed var(--text-tertiary);" title="Click to edit">${Number(s.reorder_at).toLocaleString('en-IN')} ${s.unit}</span></td>
         <td><span class="pill ${pillClass}">${pillLabel}</span></td>
-      </tr>`;
-  }).join('');
+      </tr>`);
+
+    cardsHtml.push(`
+      <div class="info-card">
+        <div class="info-card-row" style="margin-bottom:4px;">
+          <span class="sku-sub">#${idx + 1}</span>
+          <span class="pill ${pillClass}">${pillLabel}</span>
+        </div>
+        <p class="info-card-title">${displayName}${s.subtype ? ` <span class="pack-type-pill">${formatDisplayText(s.subtype)}</span>` : ''}</p>
+        <div class="info-card-row"><span>Batch / expiry</span><span>${batchLabel} · ${expiry}</span></div>
+        <div class="info-card-row"><span>Stock</span><span>${Number(s.current_stock).toLocaleString('en-IN')} ${s.unit}</span></div>
+        ${committedQty > 0 ? `<div class="info-card-row"><span>Committed</span><span style="font-weight:600;color:${committedQty > s.current_stock ? 'var(--danger)' : 'var(--text)'};">${committedQty.toLocaleString('en-IN')} ${s.unit}</span></div>` : ''}
+        <div class="info-card-footer">
+          <span style="font-size:12px;color:var(--text-secondary);">Reorder at</span>
+          <span class="reorder-edit" ${reorderEditAttr} style="cursor:pointer;border-bottom:1px dashed var(--text-tertiary);font-size:12px;">${Number(s.reorder_at).toLocaleString('en-IN')} ${s.unit}</span>
+        </div>
+      </div>`);
+  });
+
+  tbody.innerHTML = rowsHtml.join('');
+  document.getElementById('inv-cards').innerHTML = cardsHtml.join('');
 }
 
 ['inv-search','inv-category-filter','inv-status-filter'].forEach(id => {
@@ -1017,14 +1150,18 @@ function renderComponents(){
   const tbody = document.getElementById('comp-table-body');
   document.getElementById('comp-empty').classList.toggle('hidden', filtered.length > 0);
 
-  tbody.innerHTML = filtered.map(c => {
+  const rowsHtml = [];
+  const cardsHtml = [];
+
+  filtered.forEach(c => {
     const status = componentStatus(c);
     const pillClass = status === 'ok' ? 'pill-ok' : status === 'low' ? 'pill-low' : 'pill-critical';
     const pillLabel = status === 'ok' ? 'In stock' : status === 'low' ? 'Low stock' : 'Reorder now';
     const fillClass = status === 'ok' ? 'fill-ok' : status === 'low' ? 'fill-low' : 'fill-critical';
     const pct = Math.min(100, Math.round((c.current_stock / Math.max(c.reorder_at*2,1)) * 100));
+    const reorderEditAttr = `onclick="openEditReorderModal('component', '${c.component_id}', ${c.reorder_at}, '${c.unit}', '${formatDisplayText(c.name).replace(/'/g, "\\'")}')"`;
 
-    return `
+    rowsHtml.push(`
       <tr>
         <td><div class="sku-name">${formatDisplayText(c.name)}</div></td>
         <td>
@@ -1033,10 +1170,24 @@ function renderComponents(){
             <div class="stock-bar-bg"><div class="stock-bar-fill ${fillClass}" style="width:${pct}%"></div></div>
           </div>
         </td>
-        <td><span class="reorder-edit" onclick="openEditReorderModal('component', '${c.component_id}', ${c.reorder_at}, '${c.unit}', '${formatDisplayText(c.name).replace(/'/g, "\\'")}')" style="cursor:pointer;border-bottom:1px dashed var(--text-tertiary);" title="Click to edit">${Number(c.reorder_at).toLocaleString('en-IN')} ${c.unit}</span></td>
+        <td><span class="reorder-edit" ${reorderEditAttr} style="cursor:pointer;border-bottom:1px dashed var(--text-tertiary);" title="Click to edit">${Number(c.reorder_at).toLocaleString('en-IN')} ${c.unit}</span></td>
         <td><span class="pill ${pillClass}">${pillLabel}</span></td>
-      </tr>`;
-  }).join('');
+      </tr>`);
+
+    cardsHtml.push(`
+      <div class="info-card">
+        <div class="info-card-row" style="margin-bottom:4px;"><span></span><span class="pill ${pillClass}">${pillLabel}</span></div>
+        <p class="info-card-title">${formatDisplayText(c.name)}</p>
+        <div class="info-card-row"><span>Stock</span><span>${Number(c.current_stock).toLocaleString('en-IN')} ${c.unit}</span></div>
+        <div class="info-card-footer">
+          <span style="font-size:12px;color:var(--text-secondary);">Reorder at</span>
+          <span class="reorder-edit" ${reorderEditAttr} style="cursor:pointer;border-bottom:1px dashed var(--text-tertiary);font-size:12px;">${Number(c.reorder_at).toLocaleString('en-IN')} ${c.unit}</span>
+        </div>
+      </div>`);
+  });
+
+  tbody.innerHTML = rowsHtml.join('');
+  document.getElementById('comp-cards').innerHTML = cardsHtml.join('');
 }
 
 document.getElementById('comp-search').addEventListener('input', renderComponents);
@@ -1048,6 +1199,8 @@ function renderBuildableUnits(){
   if(skuComponents.length === 0){
     document.getElementById('buildable-empty').classList.remove('hidden');
     tbody.innerHTML = '';
+    const cardsContainer = document.getElementById('buildable-cards');
+    if(cardsContainer) cardsContainer.innerHTML = '';
     return;
   }
   document.getElementById('buildable-empty').classList.add('hidden');
@@ -1093,6 +1246,19 @@ function renderBuildableUnits(){
         <td class="sku-sub">${r.limitedBy || '—'}</td>
       </tr>`;
   }).join('');
+
+  const cardsContainer = document.getElementById('buildable-cards');
+  if(cardsContainer){
+    cardsContainer.innerHTML = rows.map(r => {
+      const lowBuild = r.canBuild < 1000;
+      return `
+        <div class="info-card">
+          <p class="info-card-title">${r.name}</p>
+          <div class="info-card-row"><span>Can build</span><span style="font-weight:700;color:${lowBuild ? 'var(--danger)' : 'var(--navy)'};">${r.canBuild.toLocaleString('en-IN')} units</span></div>
+          ${r.limitedBy ? `<div class="info-card-row"><span>Limited by</span><span>${r.limitedBy}</span></div>` : ''}
+        </div>`;
+    }).join('');
+  }
 }
 
 function renderOrders(){
@@ -1151,7 +1317,10 @@ function renderOrders(){
   const tbody = document.getElementById('ord-table-body');
   document.getElementById('ord-empty').classList.toggle('hidden', filtered.length > 0);
 
-  tbody.innerHTML = filtered.map(o => {
+  const rowsHtml = [];
+  const cardsHtml = [];
+
+  filtered.forEach(o => {
     const items = orderItems.filter(i => i.order_id === o.id);
     const itemStrings = items.map(i => `${formatDisplayText(i.skus?.name) || '—'} x ${Number(i.qty).toLocaleString('en-IN')}`);
     const fullItemsText = itemStrings.join(', ') || '—';
@@ -1173,7 +1342,7 @@ function renderOrders(){
       return `${line}<div class="stage-dot" style="background:${bg};color:${color}">${idx+1}</div>`;
     }).join('');
 
-    return `
+    rowsHtml.push(`
       <tr>
         <td><strong>${o.order_no}</strong><div class="sku-sub">${new Date(o.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'2-digit'})}</div></td>
         <td>${o.customer_name}<div class="sku-sub">${o.city||''}</div></td>
@@ -1189,8 +1358,29 @@ function renderOrders(){
             <button class="icon-btn" onclick="removeOrder('${o.id}', '${o.order_no}')" aria-label="Remove order" style="color:var(--danger);">🗑</button>
           </div>
         </td>
-      </tr>`;
-  }).join('');
+      </tr>`);
+
+    const stagePillClass = o.stage === 'dispatched' ? 'pill-ok' : 'pill-low';
+    cardsHtml.push(`
+      <div class="info-card">
+        <div class="info-card-row" style="margin-bottom:4px;">
+          <span><strong>${o.order_no}</strong> · ${new Date(o.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'2-digit'})}</span>
+          <span class="pill ${stagePillClass}">${STAGE_LABELS[o.stage]}</span>
+        </div>
+        <p class="info-card-title">${o.customer_name}${o.city ? ` <span class="sku-sub">· ${o.city}</span>` : ''}</p>
+        <p style="font-size:12px;color:var(--text-secondary);margin:0 0 8px;">${itemsLabel}</p>
+        <div class="info-card-footer">
+          <span style="font-weight:700;font-size:14px;color:var(--navy);">₹${Number(o.order_value).toLocaleString('en-IN')}</span>
+          <div style="display:flex;gap:4px;">
+            <button class="icon-btn" onclick="openOrderModal('${o.id}')" aria-label="Edit order">✎</button>
+            <button class="icon-btn" onclick="removeOrder('${o.id}', '${o.order_no}')" aria-label="Remove order" style="color:var(--danger);">🗑</button>
+          </div>
+        </div>
+      </div>`);
+  });
+
+  tbody.innerHTML = rowsHtml.join('');
+  document.getElementById('ord-cards').innerHTML = cardsHtml.join('');
 }
 
 ['ord-search','ord-stage-filter','ord-date-from','ord-date-to'].forEach(id => {
@@ -1268,6 +1458,13 @@ function renderDashboard(){
       <td><span class="pill ${r.urgency === 'critical' ? 'pill-critical' : 'pill-low'}" style="margin-right:8px;">${r.type}</span>${r.name}</td>
       <td class="text-right">${Number(r.current).toLocaleString('en-IN')} / ${Number(r.reorder_at).toLocaleString('en-IN')} ${r.unit}</td>
     </tr>`).join('');
+  document.getElementById('dash-reorder-cards').innerHTML = reorderRows.map(r => `
+    <div class="info-card">
+      <div class="info-card-row">
+        <span><span class="pill ${r.urgency === 'critical' ? 'pill-critical' : 'pill-low'}" style="margin-right:6px;">${r.type}</span>${r.name}</span>
+      </div>
+      <div class="info-card-row" style="margin-top:6px;"><span>Stock / reorder at</span><span>${Number(r.current).toLocaleString('en-IN')} / ${Number(r.reorder_at).toLocaleString('en-IN')} ${r.unit}</span></div>
+    </div>`).join('');
 
   // Expiring soon
   document.getElementById('dash-expiry-empty').classList.toggle('hidden', expiringBatches.length > 0);
@@ -1281,6 +1478,17 @@ function renderDashboard(){
         <td>${name}<div class="sku-sub">Batch ${b.batch_no}</div></td>
         <td class="text-right"><span class="pill ${urgentClass}">${new Date(b.expiry_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span></td>
       </tr>`;
+  }).join('');
+  document.getElementById('dash-expiry-cards').innerHTML = expiringBatches.slice(0, 20).map(b => {
+    const sku = skus.find(s => s.sku_id === b.sku_id);
+    const name = sku ? formatDisplayText(sku.name) : '—';
+    const daysLeft = Math.round((new Date(b.expiry_date) - Date.now()) / 86400000);
+    const urgentClass = daysLeft <= 30 ? 'pill-critical' : daysLeft <= 90 ? 'pill-low' : 'pill-ok';
+    return `
+      <div class="info-card">
+        <p class="info-card-title">${name}</p>
+        <div class="info-card-row"><span>Batch ${b.batch_no}</span><span class="pill ${urgentClass}">${new Date(b.expiry_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span></div>
+      </div>`;
   }).join('');
 
   // Production needed for confirmed orders
@@ -1298,6 +1506,23 @@ function renderDashboard(){
         <td style="font-weight:700;color:var(--danger);">${r.shortfall.toLocaleString('en-IN')} ${r.unit}</td>
         <td>${buildPill}${bomNote}</td>
       </tr>`;
+  }).join('');
+  document.getElementById('dash-production-cards').innerHTML = productionRows.map(r => {
+    const buildPill = r.buildable
+      ? `<span class="pill pill-ok">Buildable</span>`
+      : `<span class="pill pill-critical">Short on ${r.limitingComponent || 'components'}</span>`;
+    const bomNote = !r.hasBom ? `<div class="sku-sub" style="margin-top:4px;">No BOM tracked — assumed buildable</div>` : '';
+    return `
+      <div class="info-card">
+        <p class="info-card-title">${r.name}</p>
+        <div class="info-card-row"><span>Stock</span><span>${r.stock.toLocaleString('en-IN')} ${r.unit}</span></div>
+        <div class="info-card-row"><span>Committed</span><span>${r.committed.toLocaleString('en-IN')} ${r.unit}</span></div>
+        <div class="info-card-footer">
+          <span style="font-weight:700;color:var(--danger);font-size:13px;">Short ${r.shortfall.toLocaleString('en-IN')} ${r.unit}</span>
+          ${buildPill}
+        </div>
+        ${bomNote}
+      </div>`;
   }).join('');
 }
 
@@ -1346,12 +1571,16 @@ function renderHistory(){
   window._histRowsById = {};
   filtered.forEach(h => { window._histRowsById[h.id] = h; });
 
-  tbody.innerHTML = filtered.slice(0, 300).map(h => {
+  const rowsHtml = [];
+  const cardsHtml = [];
+
+  filtered.slice(0, 300).forEach(h => {
     const qtyDisplay = h.qty_change > 0 ? `+${Number(h.qty_change).toLocaleString('en-IN')}` : Number(h.qty_change).toLocaleString('en-IN');
     const qtyColor = h.qty_change > 0 ? 'var(--success)' : 'var(--danger)';
     const typeLabel = MOVEMENT_TYPE_LABELS[h.movement_type] || h.movement_type;
     const dateStr = new Date(h.created_at).toLocaleString('en-IN', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
-    return `
+
+    rowsHtml.push(`
       <tr>
         <td>${dateStr}</td>
         <td>${h.item}<div class="sku-sub">${h.source === 'product' ? 'Finished good' : 'Component'}</div></td>
@@ -1366,8 +1595,26 @@ function renderHistory(){
             <button class="icon-btn" onclick="deleteMovement('${h.id}', '${h.source}')" aria-label="Delete movement" style="color:var(--danger);">🗑</button>
           </div>
         </td>
-      </tr>`;
-  }).join('');
+      </tr>`);
+
+    cardsHtml.push(`
+      <div class="info-card">
+        <div class="info-card-row" style="margin-bottom:4px;">
+          <span class="sku-sub">${dateStr}</span>
+          <div style="display:flex;gap:4px;">
+            <button class="icon-btn" onclick="openEditMovementModal('${h.id}')" aria-label="Edit movement">✎</button>
+            <button class="icon-btn" onclick="deleteMovement('${h.id}', '${h.source}')" aria-label="Delete movement" style="color:var(--danger);">🗑</button>
+          </div>
+        </div>
+        <p class="info-card-title">${h.item} <span class="sku-sub">(${h.source === 'product' ? 'Finished good' : 'Component'})</span></p>
+        <div class="info-card-row"><span>${typeLabel}${h.batch_id ? ' · Batch ' + h.batch_id.slice(0,8) : ''}</span><span style="color:${qtyColor};font-weight:600;">${qtyDisplay}</span></div>
+        ${h.note ? `<div class="info-card-row"><span>Note</span><span>${h.note}</span></div>` : ''}
+        <div class="info-card-row"><span>By</span><span>${h.created_by}</span></div>
+      </div>`);
+  });
+
+  tbody.innerHTML = rowsHtml.join('');
+  document.getElementById('hist-cards').innerHTML = cardsHtml.join('');
 }
 
 function openEditMovementModal(id){
