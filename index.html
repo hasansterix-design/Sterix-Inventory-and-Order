@@ -247,6 +247,20 @@
         <div class="empty-state hidden" id="dash-expiry-empty" style="padding:24px 16px;font-size:12px;">Nothing expiring in the next 6 months.</div>
       </div>
     </div>
+
+    <div class="table-card" style="margin-top:16px;">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
+        <strong style="font-size:14px;color:var(--navy);">Production needed for confirmed orders</strong>
+        <p style="font-size:12px;color:var(--text-secondary);margin:4px 0 0;">Compares stock against quantity committed to orders at Confirmed stage or later (Received and Dispatched excluded), and checks if the shortfall can be built from current component stock.</p>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Product</th><th>Stock</th><th>Committed</th><th>Shortfall</th><th>Can build shortfall?</th></tr>
+        </thead>
+        <tbody id="dash-production-body"></tbody>
+      </table>
+      <div class="empty-state hidden" id="dash-production-empty">No confirmed orders currently exceed available stock.</div>
+    </div>
   </div>
 
   <div id="inventory-tab" class="hidden">
@@ -280,7 +294,7 @@
         <table>
           <thead>
             <tr>
-              <th>Product</th><th>Pack Type</th><th>Batch No.</th><th>Expiry</th><th>Stock</th><th>Reorder At</th><th>Status</th>
+              <th>#</th><th>Product</th><th>Pack Type</th><th>Batch No.</th><th>Expiry</th><th>Stock</th><th>Committed</th><th>Reorder At</th><th>Status</th>
             </tr>
           </thead>
           <tbody id="inv-table-body"></tbody>
@@ -838,6 +852,54 @@ function stockStatus(s){
   return 'ok';
 }
 
+// Stages counted as firm enough demand to plan production/reordering against.
+// "Received" is excluded since those orders may still change; "Dispatched" is
+// excluded since that stock has already left.
+const COMMITTED_STAGES = ['confirmed', 'in_production', 'packed', 'sterilization', 'qc'];
+
+// Returns { [sku_id]: totalQtyCommitted } summed across all open orders in
+// COMMITTED_STAGES. Computed fresh from in-memory orders/orderItems, no extra
+// network call needed since both are already loaded.
+function computeCommittedQtyBySku(){
+  const committed = {};
+  orders.forEach(o => {
+    if(!COMMITTED_STAGES.includes(o.stage)) return;
+    const items = orderItems.filter(i => i.order_id === o.id);
+    items.forEach(i => {
+      committed[i.sku_id] = (committed[i.sku_id] || 0) + Number(i.qty || 0);
+    });
+  });
+  return committed;
+}
+
+// For a given sku_id and a target quantity, checks whether current component
+// stock can cover building that many additional units, using the BOM
+// (skuComponents). Products with no BOM mapping are treated as always
+// buildable (we don't track their components, so we don't block on them).
+// Returns { buildable: bool, limitingComponent: string|null, maxBuildable: number }
+function checkBuildability(skuRealId, neededQty){
+  const bom = skuComponents.filter(sc => sc.sku_id === skuRealId);
+  if(bom.length === 0){
+    return { buildable: true, limitingComponent: null, maxBuildable: Infinity, hasBom: false };
+  }
+  const componentById = {};
+  components.forEach(c => { componentById[c.component_id] = c; });
+
+  let maxBuildable = Infinity;
+  let limitingComponent = null;
+  bom.forEach(entry => {
+    const comp = componentById[entry.component_id];
+    const available = comp ? Number(comp.current_stock) : 0;
+    const possible = Math.floor(available / Number(entry.qty_per_unit || 1));
+    if(possible < maxBuildable){
+      maxBuildable = possible;
+      limitingComponent = comp ? formatDisplayText(comp.name) : 'Unknown component';
+    }
+  });
+
+  return { buildable: maxBuildable >= neededQty, limitingComponent, maxBuildable, hasBom: true };
+}
+
 function renderInventory(){
   const search = document.getElementById('inv-search').value.toLowerCase();
   const catF = document.getElementById('inv-category-filter').value;
@@ -876,7 +938,9 @@ function renderInventory(){
   const tbody = document.getElementById('inv-table-body');
   document.getElementById('inv-empty').classList.toggle('hidden', filtered.length > 0);
 
-  tbody.innerHTML = filtered.map(s => {
+  const committedBySku = computeCommittedQtyBySku();
+
+  tbody.innerHTML = filtered.map((s, idx) => {
     const status = stockStatus(s);
     const pillClass = status === 'ok' ? 'pill-ok' : status === 'low' ? 'pill-low' : 'pill-critical';
     const pillLabel = status === 'ok' ? 'In stock' : status === 'low' ? 'Low stock' : 'Reorder now';
@@ -886,9 +950,11 @@ function renderInventory(){
     const nearestBatch = nearestBatchBySku[s.sku_id];
     const batchLabel = nearestBatch ? nearestBatch.batch_no : '—';
     const displayName = buildDisplayName(stripPackTypeFromName(formatDisplayText(s.name), !!s.subtype), s.category);
+    const committedQty = committedBySku[s.sku_id] || 0;
 
     return `
       <tr>
+        <td class="sku-sub">${idx + 1}</td>
         <td>
           <div class="sku-cell">
             <div class="sku-icon"></div>
@@ -904,6 +970,7 @@ function renderInventory(){
             <div class="stock-bar-bg"><div class="stock-bar-fill ${fillClass}" style="width:${pct}%"></div></div>
           </div>
         </td>
+        <td>${committedQty > 0 ? `<span style="font-weight:600;color:${committedQty > s.current_stock ? 'var(--danger)' : 'var(--text)'};">${committedQty.toLocaleString('en-IN')} ${s.unit}</span>` : '<span class="sku-sub">—</span>'}</td>
         <td><span class="reorder-edit" onclick="openEditReorderModal('sku', '${s.sku_id}', ${s.reorder_at}, '${s.unit}', '${formatDisplayText(s.name).replace(/'/g, "\\'")}')" style="cursor:pointer;border-bottom:1px dashed var(--text-tertiary);" title="Click to edit">${Number(s.reorder_at).toLocaleString('en-IN')} ${s.unit}</span></td>
         <td><span class="pill ${pillClass}">${pillLabel}</span></td>
       </tr>`;
@@ -1150,11 +1217,32 @@ function renderDashboard(){
 
   const totalStockValue = skus.reduce((sum, s) => sum + (Number(s.current_stock||0) * Number(s.basic_rate||0)), 0);
 
+  // Production needed for confirmed-onward orders: committed demand vs stock vs buildability
+  const committedBySku = computeCommittedQtyBySku();
+  const productionRows = [];
+  skus.forEach(s => {
+    const committedQty = committedBySku[s.sku_id] || 0;
+    if(committedQty <= 0) return;
+    const shortfall = Math.max(0, committedQty - Number(s.current_stock || 0));
+    if(shortfall <= 0) return;
+
+    const realSkuId = s.id || s.sku_id;
+    const build = checkBuildability(realSkuId, shortfall);
+    productionRows.push({
+      name: buildDisplayName(stripPackTypeFromName(formatDisplayText(s.name), !!s.subtype), s.category),
+      stock: Number(s.current_stock || 0), unit: s.unit, committed: committedQty, shortfall,
+      buildable: build.buildable, limitingComponent: build.limitingComponent, hasBom: build.hasBom
+    });
+  });
+  productionRows.sort((a,b) => b.shortfall - a.shortfall);
+  window._dashProductionRows = productionRows;
+
   document.getElementById('dash-summary-stats').innerHTML = `
     <div class="stat-card"><p class="stat-label">Products Needing Reorder</p><p class="stat-value danger">${critical.length + low.length}</p></div>
     <div class="stat-card"><p class="stat-label">Components Needing Reorder</p><p class="stat-value danger">${criticalComponents.length + lowComponents.length}</p></div>
     <div class="stat-card"><p class="stat-label">Batches Expiring &lt;6mo</p><p class="stat-value warning">${expiringBatches.length}</p></div>
     <div class="stat-card"><p class="stat-label">Orders Stuck</p><p class="stat-value warning">${stuckOrders.length}</p></div>
+    <div class="stat-card"><p class="stat-label">Short For Confirmed Orders</p><p class="stat-value ${productionRows.length > 0 ? 'danger' : ''}">${productionRows.length}</p></div>
     <div class="stat-card"><p class="stat-label">Total Stock Value</p><p class="stat-value">₹${totalStockValue.toLocaleString('en-IN', {maximumFractionDigits:0})}</p></div>
   `;
 
@@ -1190,6 +1278,23 @@ function renderDashboard(){
       <tr>
         <td>${name}<div class="sku-sub">Batch ${b.batch_no}</div></td>
         <td class="text-right"><span class="pill ${urgentClass}">${new Date(b.expiry_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span></td>
+      </tr>`;
+  }).join('');
+
+  // Production needed for confirmed orders
+  document.getElementById('dash-production-empty').classList.toggle('hidden', productionRows.length > 0);
+  document.getElementById('dash-production-body').innerHTML = productionRows.map(r => {
+    const buildPill = r.buildable
+      ? `<span class="pill pill-ok">Yes — buildable</span>`
+      : `<span class="pill pill-critical">No — short on ${r.limitingComponent || 'components'}</span>`;
+    const bomNote = !r.hasBom ? `<div class="sku-sub">No BOM tracked — assumed buildable</div>` : '';
+    return `
+      <tr>
+        <td>${r.name}</td>
+        <td>${r.stock.toLocaleString('en-IN')} ${r.unit}</td>
+        <td>${r.committed.toLocaleString('en-IN')} ${r.unit}</td>
+        <td style="font-weight:700;color:var(--danger);">${r.shortfall.toLocaleString('en-IN')} ${r.unit}</td>
+        <td>${buildPill}${bomNote}</td>
       </tr>`;
   }).join('');
 }
@@ -1917,8 +2022,9 @@ function exportToCSV(rows, headers, filename){
 }
 
 document.getElementById('inv-export-btn').addEventListener('click', () => {
-  const rows = skus.map(s => ({ name:formatDisplayText(s.name), category:formatDisplayText(s.category), pack_type:formatDisplayText(s.subtype), current_stock:s.current_stock, reorder_at:s.reorder_at, nearest_expiry:s.nearest_expiry }));
-  exportToCSV(rows, ['name','category','pack_type','current_stock','reorder_at','nearest_expiry'], 'sterix-inventory.csv');
+  const committedBySku = computeCommittedQtyBySku();
+  const rows = skus.map(s => ({ name:formatDisplayText(s.name), category:formatDisplayText(s.category), pack_type:formatDisplayText(s.subtype), current_stock:s.current_stock, committed:committedBySku[s.sku_id] || 0, reorder_at:s.reorder_at, nearest_expiry:s.nearest_expiry }));
+  exportToCSV(rows, ['name','category','pack_type','current_stock','committed','reorder_at','nearest_expiry'], 'sterix-inventory.csv');
 });
 
 document.getElementById('ord-export-btn').addEventListener('click', () => {
