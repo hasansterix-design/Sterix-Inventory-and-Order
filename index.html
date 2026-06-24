@@ -54,7 +54,7 @@
   .profile-trigger{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:7px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--navy);}
   .profile-panel{display:none;position:absolute;right:0;top:calc(100% + 8px);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;min-width:200px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:40;}
 
-  body.view-mobile .header-tagline,
+  body.view-mobile .header-tagline{font-size:9px;letter-spacing:0.4px;}
   body.view-mobile .header-user-pill,
   body.view-mobile .profile-trigger{display:none;}
   body.view-mobile .hamburger-btn{display:flex;align-items:center;justify-content:center;}
@@ -1231,7 +1231,7 @@ function renderBuildableUnits(){
       }
     });
 
-    return { name: buildDisplayName(stripPackTypeFromName(formatDisplayText(sku.name), !!sku.subtype), sku.category), canBuild: minBuildable === Infinity ? 0 : minBuildable, limitedBy: limitingComponent };
+    return { name: buildDisplayName(formatDisplayText(sku.name), sku.category), canBuild: minBuildable === Infinity ? 0 : minBuildable, limitedBy: limitingComponent };
   }).filter(Boolean);
 
   rows.sort((a,b) => a.canBuild - b.canBuild);
@@ -1420,7 +1420,7 @@ function renderDashboard(){
     const realSkuId = s.id || s.sku_id;
     const build = checkBuildability(realSkuId, shortfall);
     productionRows.push({
-      name: buildDisplayName(stripPackTypeFromName(formatDisplayText(s.name), !!s.subtype), s.category),
+      name: buildDisplayName(formatDisplayText(s.name), s.category),
       stock: Number(s.current_stock || 0), unit: s.unit, committed: committedQty, shortfall,
       buildable: build.buildable, limitingComponent: build.limitingComponent, hasBom: build.hasBom
     });
